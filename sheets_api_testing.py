@@ -123,4 +123,4 @@ if __name__ == '__main__':
     sheetId='test'
     if not get_numeric_sheetId(OFFICIAL_MATCH_HISTORY_SHEET_ID, sheetId):
         create_sheet(OFFICIAL_MATCH_HISTORY_SHEET_ID, sheetId)
-    sheet_setup(OFFICIAL_MATCH_HISTORY_SHEET_ID, sheetId)
+    # sheet_setup(OFFICIAL_MATCH_HISTORY_SHEET_ID, sheetId)
