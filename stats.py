@@ -25,6 +25,13 @@ def find_id_in_list(id, fieldname, lst):
 		if dct[fieldname] == id:
 			return dct
 
+def find_matching_fields_in_list(value, fieldname, lst):
+	matches = []
+	for dct in lst:
+		if dct[fieldname] == value:
+			matches.append(dct)
+	return matches
+
 def convert_cs_diff(cs_diff_by_min, gamelength):
 	for duration in cs_diff_by_min:
 		if "end" not in duration:
@@ -46,8 +53,29 @@ def get_opponent(participants, participant_id):
 			return other
 
 def get_team_stats(match_obj, team_id):
-	#todo - objectives + total vision
-	return None
+	team = find_id_in_list(team_id, "teamId", match_obj["teams"])
+	players = find_matching_fields_in_list(team_id, "teamId", match_obj["participants"])
+	total_wards_placed = sum([player["stats"]["wardsPlaced"] for player in players])
+	total_wards_killed = sum([player["stats"]["wardsKilled"] for player in players])
+	total_pinks = sum([player["stats"]["visionWardsBoughtInGame"] for player in players])
+	total_vision_score = sum([player["stats"]["visionScore"] for player in players])
+	return { 	"Total green wards": total_wards_placed,
+				"Total pink wards": total_pinks,
+				"Total wards killed": total_wards_killed,
+				"Total vision score": total_vision_score,
+				"Tower kills": team["towerKills"],
+				"Inhibitor kills":  team["inhibitorKills"],
+				"Dragon kills": team["dragonKills"],
+				"Baron kills": team["baronKills"],
+				"Took Rift Herald": team["firstRiftHerald"],
+				"Win": team["win"] != "Fail",
+				"First tower": team["firstTower"],
+				"First inhibitor": team["firstInhibitor"],
+				"First dragon": team["firstDragon"],
+				"First blood": team["firstBlood"],
+				"First baron": team["firstBaron"],
+				"Duration": match_obj["gameDuration"]
+			}
 
 def get_vision_stats(match_obj, participant_id):
 	#todo - vision score, control wards, regular wards
@@ -66,7 +94,12 @@ def get_cs_stats(match_obj, participant_id):
 	cs_per_min = round(float(total_cs)/(match_obj["gameDuration"]/60), 2)
 	opponent = get_opponent(match_obj["participants"], participant_id)
 	cs_diff = total_cs - opponent["stats"]["totalMinionsKilled"] - opponent["stats"]["neutralMinionsKilled"]
-	return {"CS per min by min": cs_per_min_by_min, "CS differential by min": cs_diff_by_min, "Total CS": total_cs, "CS per min": cs_per_min, "CS differential": cs_diff}
+	return { 	"CS per min by min": cs_per_min_by_min,
+				"CS differential by min": cs_diff_by_min,
+				"Total CS": total_cs,
+				"CS per min": cs_per_min,
+				"CS differential": cs_diff
+			}
 
 def get_combat_stats(match_obj, participant_id):
 	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
@@ -82,7 +115,18 @@ def get_combat_stats(match_obj, participant_id):
 	killing_spree = stats["largestKillingSpree"]
 	multi_kill = stats["largestMultiKill"]
 	kda = round(float(kills+assists)/deaths, 2)
-	return {"KDA": kda, "Kills": kills, "Deaths": deaths, "Assists": assists, "Kill Participation": kill_partic, "Kill Share": kill_share, "Death Share": death_share, "Longest Killing Spree": killing_spree, "Largest MultiKill": multi_kill, "Team Kills": team_kills, "Enemy Kills": enemy_kills}
+	return { 	"KDA": kda,
+				"Kills": kills,
+				"Deaths": deaths,
+				"Assists": assists,
+				"Kill Participation": kill_partic,
+				"Kill Share": kill_share,
+				"Death Share": death_share,
+				"Longest Killing Spree": killing_spree,
+				"Largest MultiKill": multi_kill,
+				"Team Kills": team_kills,
+				"Enemy Kills": enemy_kills
+			}
 
 def aggregate_combat_stats(prev_agg, new_stats):
 	new_kills = prev_agg["Kills"] + new_stats["Kills"]
@@ -96,7 +140,18 @@ def aggregate_combat_stats(prev_agg, new_stats):
 	new_killspree = max(prev_agg["Longest Killing Spree"], new_stats["Longest Killing Spree"])
 	new_multi = max(prev_agg["Largest MultiKill"], new_stats["Largest MultiKill"])
 	new_kda = round(float(new_kills+new_assists)/new_deaths,2)
-	return {"KDA": new_kda, "Kills": new_kills, "Deaths": new_deaths, "Assists": new_assists, "Kill Participation": new_kp, "Kill Share": new_ks, "Death Share": new_ds, "Longest Killing Spree": new_killspree, "Largest MultiKill": new_multi, "Team Kills": new_t_kills, "Enemy Kills": new_e_kills}
+	return {"KDA": new_kda,
+	 		"Kills": new_kills,
+	 		"Deaths": new_deaths,
+	 		"Assists": new_assists,
+	 		"Kill Participation": new_kp,
+	 		"Kill Share": new_ks,
+	 		"Death Share": new_ds,
+	 		"Longest Killing Spree": new_killspree,
+	 		"Largest MultiKill": new_multi,
+	 		"Team Kills": new_t_kills,
+	 		"Enemy Kills": new_e_kills
+	 		}
 
 
 m = load_match("example_match.json")
