@@ -45,6 +45,18 @@ def get_opponent(participants, participant_id):
 		if participant_id != other["participantId"] and other["timeline"]["role"] == participant_role:
 			return other
 
+def get_team_stats(match_obj, team_id):
+	#todo - objectives + total vision
+	return None
+
+def get_vision_stats(match_obj, participant_id):
+	#todo - vision score, control wards, regular wards
+	return None
+
+def get_damage_stats(match_obj, participant_id):
+	#todo - damage breakdown + differentials
+	return None
+
 def get_cs_stats(match_obj, participant_id):
 	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
 	cs_per_min_by_min = participant_obj["timeline"]["creepsPerMinDeltas"]
