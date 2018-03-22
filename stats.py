@@ -55,6 +55,11 @@ def convert_cs_diff(cs_diff_by_min, gamelength):
 			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * float(gamelength-1800)/60, 2)
 	return cs_diff_by_min
 
+def get_name_from_partic_id(match_obj, partic_id):
+	partic_obj = find_id_in_list(partic_id, "participantId", match_obj["participantIdentities"])
+	if "player" in partic_obj:
+		return partic_obj["player"]["summonerName"]
+
 def get_partic_id_from_name(match_obj, summoner_name):
 	for partic_identity in match_obj["participantIdentities"]:
 		if "player" in partic_identity and "summonerName" in partic_identity["player"] and partic_identity["player"]["summonerName"] == summoner_name:
@@ -181,9 +186,6 @@ def get_cs_stats(match_obj, participant_id):
 				"CS differential": cs_diff
 			}
 
-def aggregate_cs_stats(prev_agg, new_stats):
-	return None
-
 def get_combat_stats(match_obj, participant_id):
 	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
 	stats = participant_obj["stats"]
@@ -211,37 +213,15 @@ def get_combat_stats(match_obj, participant_id):
 				"Enemy Kills": enemy_kills
 			}
 
-def aggregate_combat_stats(prev_agg, new_stats):
-	new_kills = prev_agg["Kills"] + new_stats["Kills"]
-	new_deaths = prev_agg["Deaths"] + new_stats["Deaths"]
-	new_assists = prev_agg["Assists"] + new_stats["Assists"]
-	new_t_kills = prev_agg["Team Kills"] + new_stats["Team Kills"]
-	new_e_kills = prev_agg["Enemy Kills"] + new_stats["Enemy Kills"]
-	new_kp = round(float(new_kills+new_assists)/new_t_kills, 2)
-	new_ks = round(float(new_kills)/new_t_kills, 2)
-	new_ds = round(float(new_deaths)/new_e_kills, 2)
-	new_killspree = max(prev_agg["Longest Killing Spree"], new_stats["Longest Killing Spree"])
-	new_multi = max(prev_agg["Largest MultiKill"], new_stats["Largest MultiKill"])
-	new_kda = round(float(new_kills+new_assists)/new_deaths,2)
-	return {"KDA": new_kda,
-	 		"Kills": new_kills,
-	 		"Deaths": new_deaths,
-	 		"Assists": new_assists,
-	 		"Kill Participation": new_kp,
-	 		"Kill Share": new_ks,
-	 		"Death Share": new_ds,
-	 		"Longest Killing Spree": new_killspree,
-	 		"Largest MultiKill": new_multi,
-	 		"Team Kills": new_t_kills,
-	 		"Enemy Kills": new_e_kills
-	 		}
-
 def flatten(d, leaves={}, prev_keys = []):
 	for k in d:
 		if isinstance(d[k], dict):
 			flatten(d[k], leaves, prev_keys + [k])
 		else:
-			leaves["_".join(prev_keys) + "_" + k] = d[k]
+			if len(prev_keys) > 0:
+				leaves["_".join(prev_keys) + "_" + k] = d[k]
+			else:
+				leaves[k] = d[k]
 	return leaves
 
 def get_all_player_stats(match_obj, participant_id):
@@ -250,8 +230,7 @@ def get_all_player_stats(match_obj, participant_id):
 	d_bkdn = get_damage_breakdown(match_obj, participant_id)
 	v_stats = get_vision_stats(match_obj, participant_id)
 	cs_stats = get_cs_stats(match_obj, participant_id)
-	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats})}
+	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats}), **flatten({"Player": get_name_from_partic_id(match_obj, participant_id)})}
 
-m = load_json("example_match.json")
-p_id = get_partic_id_from_name(m, "Gezang")
-d = get_all_player_stats(m, p_id)
+def add_match_results_to_player_stats(match_obj, existing_stats):
+	

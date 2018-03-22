@@ -20,6 +20,7 @@ SCOPES = "https://www.googleapis.com/auth/spreadsheets"
 CLIENT_SECRET_FILE = "client_secret.json"
 APPLICATION_NAME = "Google Sheets API Python Quickstart"
 
+PLAYER_STATS_SPREADSHEET_ID = "1fu8T513ZZhWDn0Fimc01evXSW6lwxUJI49gHq_BUow8"
 STATS_TESTING_SPREADSHEET_ID = "1haqC4FS0pY2bVe9agDLDi5KtMvk4hzRlcl9RvI-We4s"
 CUSTOM_TEAM_BG_COLOR = {"red": "183", "green": "225", "blue": "205"}
 
@@ -34,11 +35,14 @@ PLAYER_STATS_KEY_HIERARCHY = OrderedDict([  ("Combat Stats", ["Kills", "Deaths",
                                             ("CS stats", ["Total CS", "CS per min", "CS per min by min", "CS differential", "CS differential by min"])
                                 ])
 #TODO: fix damage breakdown hierarchy
+m = load_json("example_match.json")
+p_id = get_partic_id_from_name(m, "Gezang")
+stats = get_all_player_stats(m, p_id)
+PLAYER_STATS_COL_TITLES = list(stats)
+PLAYER_STATS_COL_TITLES.sort()
+PLAYER_STATS_COL_TITLES.remove("Player")
+PLAYER_STATS_COL_TITLES.insert(0, "Player")
 
-PLAYER_STATS_COL_TITLES = [ [""]*18 + ["Damage type breakdown"] + [""] * 11 + ["Vision Stats"] + [""] * 19,
-                            [""] + ["Combat Stats"] + [""] * 10 + ["Damage Stats"] + [""] * 5 + ["Dealt"] + [""] * 3 + ["Dealt to Champions"] + [""] * 3 + ["Taken"] + [""] * 3 + ["Player"] + [""] * 3 + ["Opponent"] + [""] * 3 + ["Absolute Difference"] + [""] * 3 + ["Relative Score"] + [""] * 3 + ["CS stats"] + [""] * 3,
-                            ["Player", "Kills", "Deaths", "Assists", "KDA", "Kill Participation", "Kill Share", "Team Kills", "Enemy Kills", "Death Share", "Largest MultiKill", "Longest Killing Spree", "Objective Damage", "Turret Damage", "Total CC duration", "Dmg taken per min by min", "Dmg taken diff per min by min", "Heals Given", "Total", "Physical", "Magic", "True", "Total", "Physical", "Magic", "True", "Total", "Physical", "Magic", "True", "Wards placed", "Control wards purchased", "Wards killed", "Vision score", "Wards placed", "Control wards purchased", "Wards killed", "Vision score", "Wards placed", "Control wards purchased", "Wards killed", "Vision score", "Wards placed", "Control wards purchased", "Wards killed", "Vision score", "Total CS", "CS per min", "CS per min by min", "CS differential"]
-                            ]
 
 
 def get_credentials():
@@ -78,8 +82,9 @@ def credential_service_setup():
                               discoveryServiceUrl=discoveryUrl)
     return service
 
-def create_sheet(spreadsheetId, sheetId):
-    service = credential_service_setup()
+def create_sheet(spreadsheetId, sheetId, service=None):
+    if not service:
+        service = credential_service_setup()
     properties = {
         "title": sheetId,
     }
@@ -88,8 +93,9 @@ def create_sheet(spreadsheetId, sheetId):
     response = request.execute()
     print(response)
 
-def create_sheets(spreadsheetId, sheetIds):
-    service = credential_service_setup()
+def create_sheets(spreadsheetId, sheetIds, service=None):
+    if not service:
+        service = credential_service_setup()
     requests = []
     for sheetId in sheetIds:
         requests.append({
@@ -103,8 +109,9 @@ def create_sheets(spreadsheetId, sheetIds):
     response = request.execute()
     print(response)
 
-def get_numeric_sheetId(spreadsheetId, sheetId):
-    service = credential_service_setup()
+def get_numeric_sheetId(spreadsheetId, sheetId, service=None):
+    if not service:
+        service = credential_service_setup()
     request = service.spreadsheets().get(spreadsheetId=spreadsheetId, fields="sheets.properties")
     response = request.execute()
     title_dict = {sheet["properties"]["title"] : sheet["properties"]["sheetId"] for sheet in response["sheets"]}
@@ -113,18 +120,18 @@ def get_numeric_sheetId(spreadsheetId, sheetId):
     else:
         return title_dict[sheetId]
 
-def setup_player_stat_sheet(spreadsheetId, sheetId):
+def setup_player_stat_sheet(spreadsheetId, sheetId, service=None):
     numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
     if not numeric_sheetId:
         print("Error: Could not find sheet " + sheetId)
         return
-    service = credential_service_setup()
-    # Write a test
+    if not service:
+        service = credential_service_setup()
     data = [
         {
-            "range":sheetId+"!A1:AX3",
+            "range":sheetId+"!A1:AAA1",
             "majorDimension":"ROWS",
-            "values":PLAYER_STATS_COL_TITLES
+            "values":[PLAYER_STATS_COL_TITLES]
         }
         ]
 
@@ -132,8 +139,68 @@ def setup_player_stat_sheet(spreadsheetId, sheetId):
     response = request.execute()
     return response
 
+def format_player_stat_sheet(spreadsheetId, sheetId, service=None):
+    numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
+    if not numeric_sheetId:
+        print("Error: Could not find sheet " + sheetId)
+        return
+    if not service:
+        service = credential_service_setup()
+    requests = [
+    {
+      "autoResizeDimensions": {
+        "dimensions": {
+          "sheetId": numeric_sheetId,
+          "dimension": "COLUMNS",
+          "startIndex": 0,
+          "endIndex": len(PLAYER_STATS_COL_TITLES)+1
+        }
+      }
+    }
+    ]
+    request = service.spreadsheets().batchUpdate(spreadsheetId=spreadsheetId, body={"requests": requests})
+    response = request.execute()
+    return response
+
+def enter_player_stat_row(spreadsheetId, sheetId, row, stats, service=None):
+    numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
+    if not numeric_sheetId:
+        print("Error: Could not find sheet " + sheetId)
+        return
+    if not service:
+        service = credential_service_setup()
+    data = [
+        {
+            "range":sheetId+"!A" + str(row) + ":BK" + str(row),
+            "majorDimension":"ROWS",
+            "values":[stats]
+        }
+        ]
+
+    request = service.spreadsheets().values().batchUpdate(spreadsheetId=spreadsheetId, body={"valueInputOption": "USER_ENTERED", "data": data})
+    response = request.execute()
+    return response
+
+def read_existing_stats(spreadsheetId, sheetId, service=None):
+    numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
+    if not numeric_sheetId:
+        print("Error: Could not find sheet " + sheetId)
+        return
+    if not service:
+        service = credential_service_setup()
+    rang = sheetId + "!A2:BK"
+    request = service.spreadsheets().values().get(spreadsheetId=spreadsheetId, range=rang)
+    response = request.execute()
+    return response
+
+
 if __name__ == "__main__":
-    # sheetId="Player Stats"
-    # if not get_numeric_sheetId(STATS_TESTING_SPREADSHEET_ID, sheetId):
-    #     create_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId)
-    # r = setup_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId)
+    sheetId="All Players"
+    service = credential_service_setup()
+    if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
+        create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
+    r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
+    r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
