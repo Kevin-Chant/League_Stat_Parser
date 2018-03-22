@@ -2,23 +2,31 @@ import json
 import os.path
 from riot_api_access import *
 
-def store_match(match_obj, filename):
-	if os.path.isfile(filename):
+
+def store_json(json_obj, filename, force=False):
+	if os.path.isfile(filename) and not force:
 		print("Cannot store at " + filename + ".\nFile already exists.")
 		return False
-	if not isinstance(match_obj, dict):
+	if not isinstance(json_obj, dict):
 		print("Must be given a valid dictionary to store")
 		return False
 	with open(filename, 'w') as fp:
-		json.dump(match_obj, fp)
+		json.dump(json_obj, fp)
 		return True
 
-def load_match(filename):
+def load_json(filename):
 	if not os.path.isfile(filename):
 		print("File cannot be found")
 		return None
 	with open(filename) as fp:
 		return json.load(fp)
+
+def update_champ_ids(force=False):
+	dct = get_champion_id_dict()
+	if not store_json(dct, "champ_ids.json", force):
+		return None
+	return dct
+
 
 def find_id_in_list(id, fieldname, lst):
 	for dct in lst:
@@ -31,6 +39,13 @@ def find_matching_fields_in_list(value, fieldname, lst):
 		if dct[fieldname] == value:
 			matches.append(dct)
 	return matches
+
+def get_subfields_in_list(fieldname, lst):
+	fields = []
+	for dct in lst:
+		if fieldname in dct:
+			fields.append(dct[fieldname])
+	return fields
 
 def convert_cs_diff(cs_diff_by_min, gamelength):
 	for duration in cs_diff_by_min:
@@ -52,6 +67,22 @@ def get_opponent(participants, participant_id):
 		if participant_id != other["participantId"] and other["timeline"]["role"] == participant_role:
 			return other
 
+def get_basic_game_info(match_obj):
+	blue_picks = get_subfields_in_list("championId", find_matching_fields_in_list(100, "teamId", match_obj["participants"]))
+	red_picks = get_subfields_in_list("championId", find_matching_fields_in_list(200, "teamId", match_obj["participants"]))
+	winner = "Blue" if match_obj["teams"][0]["win"] == "Win" else "Red"
+	player_identities = get_subfields_in_list("player", match_obj["participantIdentities"])
+	to_rtn = { 	"Blue bans": match_obj["teams"][0]["bans"],
+				"Blue picks": blue_picks,
+				"Red bans": match_obj["teams"][1]["bans"],
+				"Red picks": red_picks,
+				"Duration": match_obj["gameDuration"],
+				"Winner": winner
+				}
+	if len(player_identities) > 0:
+		to_rtn["Players"] = player_identities
+	return to_rtn
+
 def get_team_stats(match_obj, team_id):
 	team = find_id_in_list(team_id, "teamId", match_obj["teams"])
 	players = find_matching_fields_in_list(team_id, "teamId", match_obj["participants"])
@@ -59,8 +90,8 @@ def get_team_stats(match_obj, team_id):
 	total_wards_killed = sum([player["stats"]["wardsKilled"] for player in players])
 	total_pinks = sum([player["stats"]["visionWardsBoughtInGame"] for player in players])
 	total_vision_score = sum([player["stats"]["visionScore"] for player in players])
-	return { 	"Total green wards": total_wards_placed,
-				"Total pink wards": total_pinks,
+	return { 	"Total wards placed": total_wards_placed,
+				"Total control wards": total_pinks,
 				"Total wards killed": total_wards_killed,
 				"Total vision score": total_vision_score,
 				"Tower kills": team["towerKills"],
@@ -78,12 +109,61 @@ def get_team_stats(match_obj, team_id):
 			}
 
 def get_vision_stats(match_obj, participant_id):
-	#todo - vision score, control wards, regular wards
-	return None
+	stats = find_id_in_list(participant_id, "participantId", match_obj["participants"])["stats"]
+	opponent_stats = get_opponent(match_obj["participants"], participant_id)["stats"]
+	return { 	"Player": { "Wards placed": stats["wardsPlaced"],
+							"Wards killed": stats["wardsKilled"],
+							"Vision score": stats["visionScore"],
+							"Control wards purchased": stats["visionWardsBoughtInGame"]
+							},
+				"Opponent": { "Wards placed": opponent_stats["wardsPlaced"],
+							"Wards killed": opponent_stats["wardsKilled"],
+							"Vision score": opponent_stats["visionScore"],
+							"Control wards purchased": opponent_stats["visionWardsBoughtInGame"]
+							},
+				"Absolute Difference": {"Wards placed": stats["wardsPlaced"] - opponent_stats["wardsPlaced"],
+										"Wards killed": stats["wardsKilled"] - opponent_stats["wardsKilled"],
+										"Vision score": stats["visionScore"] - opponent_stats["visionScore"],
+										"Control wards purchased": stats["visionWardsBoughtInGame"] - opponent_stats["visionWardsBoughtInGame"]
+									},
+				"Relative Score": { "Wards placed": round(float(stats["wardsPlaced"])/max(opponent_stats["wardsPlaced"],1),2),
+									"Wards killed": round(float(stats["wardsKilled"])/max(opponent_stats["wardsKilled"],1),2),
+									"Vision score": round(float(stats["visionScore"])/max(opponent_stats["visionScore"],1),2),
+									"Control wards purchased": round(float(stats["visionWardsBoughtInGame"])/max(opponent_stats["visionWardsBoughtInGame"],1),2)
+									}
+
+			}
 
 def get_damage_stats(match_obj, participant_id):
-	#todo - damage breakdown + differentials
-	return None
+	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
+	stats = participant_obj["stats"]
+	return {"Dmg taken per min by min": participant_obj["timeline"]["damageTakenPerMinDeltas"],
+			"Dmg taken diff per min by min": participant_obj["timeline"]["damageTakenDiffPerMinDeltas"],
+			"Objective Damage": stats["damageDealtToObjectives"],
+			"Turret Damage": stats["damageDealtToTurrets"],
+			"Heals Given": stats["totalHeal"],
+			"Total CC duration": stats["timeCCingOthers"]
+			}
+
+def get_damage_breakdown(match_obj, participant_id):
+	stats = find_id_in_list(participant_id, "participantId", match_obj["participants"])["stats"]
+	return { "Dealt": { "Magic": stats["magicDamageDealt"],
+						"Physical": stats["physicalDamageDealt"],
+						"True": stats["trueDamageDealt"],
+						"Total": stats["totalDamageDealt"]
+						},
+			"Taken": { 	"Magic": stats["magicalDamageTaken"],
+						"Physical": stats["physicalDamageTaken"],
+						"True": stats["trueDamageTaken"],
+						"Total": stats["totalDamageTaken"]
+						},
+			"Dealt to Champions": {	"Magic": stats["magicDamageDealtToChampions"],
+									"Physical": stats["physicalDamageDealtToChampions"],
+									"True": stats["trueDamageDealtToChampions"],
+									"Total": stats["totalDamageDealtToChampions"]
+									}
+			}
+
 
 def get_cs_stats(match_obj, participant_id):
 	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
@@ -100,6 +180,9 @@ def get_cs_stats(match_obj, participant_id):
 				"CS per min": cs_per_min,
 				"CS differential": cs_diff
 			}
+
+def aggregate_cs_stats(prev_agg, new_stats):
+	return None
 
 def get_combat_stats(match_obj, participant_id):
 	participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
@@ -153,17 +236,18 @@ def aggregate_combat_stats(prev_agg, new_stats):
 	 		"Enemy Kills": new_e_kills
 	 		}
 
+def flatten(d, leaves={}):
+	for k in d:
+		if isinstance(d[k], dict):
+			flatten(d[k], leaves)
+		else:
+			leaves[k] = d[k]
+	return leaves
 
-m = load_match("example_match.json")
-# m2 = load_match("example_custom.json")
-# combat_stats1 = get_combat_stats(m1, 1)
-# combat_stats2 = get_combat_stats(m2, 1)
-# print(combat_stats1)
-# print("\n")
-# print(combat_stats2)
-# print("\n")
-# print(aggregate_combat_stats(combat_stats1,combat_stats2))
-partic_id = get_partic_id_from_name(m, "Gezang")
-if partic_id:
-	for key,val in get_combat_stats(m, partic_id).items():
-		print(key + ": " + str(val))
+def get_all_player_stats(match_obj, participant_id):
+	c_stats = get_combat_stats(match_obj, participant_id)
+	d_stats = get_damage_stats(match_obj, participant_id)
+	d_bkdn = get_damage_breakdown(match_obj, participant_id)
+	v_stats = get_vision_stats(match_obj, participant_id)
+	cs_stats = get_cs_stats(match_obj, participant_id)
+	return {**flatten(c_stats), **flatten(d_stats), **flatten(d_bkdn), **flatten(v_stats), **flatten(cs_stats)}
