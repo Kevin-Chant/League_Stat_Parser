@@ -236,12 +236,12 @@ def aggregate_combat_stats(prev_agg, new_stats):
 	 		"Enemy Kills": new_e_kills
 	 		}
 
-def flatten(d, leaves={}):
+def flatten(d, leaves={}, prev_keys = []):
 	for k in d:
 		if isinstance(d[k], dict):
-			flatten(d[k], leaves)
+			flatten(d[k], leaves, prev_keys + [k])
 		else:
-			leaves[k] = d[k]
+			leaves["_".join(prev_keys) + "_" + k] = d[k]
 	return leaves
 
 def get_all_player_stats(match_obj, participant_id):
@@ -250,4 +250,8 @@ def get_all_player_stats(match_obj, participant_id):
 	d_bkdn = get_damage_breakdown(match_obj, participant_id)
 	v_stats = get_vision_stats(match_obj, participant_id)
 	cs_stats = get_cs_stats(match_obj, participant_id)
-	return {**flatten(c_stats), **flatten(d_stats), **flatten(d_bkdn), **flatten(v_stats), **flatten(cs_stats)}
+	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats})}
+
+m = load_json("example_match.json")
+p_id = get_partic_id_from_name(m, "Gezang")
+d = get_all_player_stats(m, p_id)
