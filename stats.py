@@ -1,5 +1,6 @@
 import json
 import os.path
+from collections import defaultdict
 from riot_api_access import *
 
 
@@ -232,5 +233,28 @@ def get_all_player_stats(match_obj, participant_id):
 	cs_stats = get_cs_stats(match_obj, participant_id)
 	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats}), **flatten({"Player": get_name_from_partic_id(match_obj, participant_id)})}
 
+def get_overall_player_stats(match_obj, participant_id):
+	#TODO
+	return None
+
 def add_match_results_to_player_stats(match_obj, existing_stats):
-	
+	agg = defaultdict(lambda: None)
+	for key in OVERALL_STATS:
+		agg[key] = OVERALL_STAT_AGG_FUNCS[key](match_obj, existing_stats)
+	return agg
+
+def stats_from_filtered_matches(match_ids, key_hierarchy_list, desired_value_list):
+	aggregate_stats = {}
+	for match_id in match_ids:
+		match_obj = load_and_cache(match_id)
+		for i in range(len(key_hierarchy_list)):
+			key_hierarchy = key_hierarchy_list[i]
+			desired_value = desired_value_list[i]
+			d = match_obj
+			for key in key_hierarchy:
+				if not key in d or (not isinstance(d[k], dict) and d[k] != desired_value):
+					match_obj = None
+		if not match_obj:
+			continue
+		aggregate_stats = add_match_results_to_player_stats(match_obj, aggregate_stats)
+	return aggregate_stats

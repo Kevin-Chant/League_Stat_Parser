@@ -1,7 +1,8 @@
 import httplib2
 import os
-from collections import OrderedDict
 from stats import *
+from global_defs import *
+from riot_api_access import *
 
 from apiclient import discovery
 from oauth2client import client
@@ -16,32 +17,10 @@ except ImportError:
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
-SCOPES = "https://www.googleapis.com/auth/spreadsheets"
+SCOPES = "https://www.googleapis.com/auth/drive"
 CLIENT_SECRET_FILE = "client_secret.json"
 APPLICATION_NAME = "Google Sheets API Python Quickstart"
 
-PLAYER_STATS_SPREADSHEET_ID = "1fu8T513ZZhWDn0Fimc01evXSW6lwxUJI49gHq_BUow8"
-STATS_TESTING_SPREADSHEET_ID = "1haqC4FS0pY2bVe9agDLDi5KtMvk4hzRlcl9RvI-We4s"
-CUSTOM_TEAM_BG_COLOR = {"red": "183", "green": "225", "blue": "205"}
-
-PLAYER_STATS_KEY_HIERARCHY = OrderedDict([  ("Combat Stats", ["Kills", "Deaths", "Assists", "KDA", "Kill Participation", "Kill Share", "Team Kills", "Enemy Kills", "Death Share", "Largest MultiKill", "Longest Killing Spree"]),
-                                            ("Damage Stats", ["Objective Damage", "Turret Damage", "Total CC duration", "Dmg taken per min by min", "Dmg taken diff per min by min", "Heals Given", "Damage type breakdown"]),
-                                            ("Vision Stats", OrderedDict([  ("Player", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-                                                                            ("Opponent", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-                                                                            ("Absolute Difference", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-                                                                            ("Relative Score", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"])
-                                                    ])
-                                            ),
-                                            ("CS stats", ["Total CS", "CS per min", "CS per min by min", "CS differential", "CS differential by min"])
-                                ])
-#TODO: fix damage breakdown hierarchy
-m = load_json("example_match.json")
-p_id = get_partic_id_from_name(m, "Gezang")
-stats = get_all_player_stats(m, p_id)
-PLAYER_STATS_COL_TITLES = list(stats)
-PLAYER_STATS_COL_TITLES.sort()
-PLAYER_STATS_COL_TITLES.remove("Player")
-PLAYER_STATS_COL_TITLES.insert(0, "Player")
 
 
 
@@ -108,6 +87,16 @@ def create_sheets(spreadsheetId, sheetIds, service=None):
     request = service.spreadsheets().batchUpdate(spreadsheetId=spreadsheetId, body={"requests": requests})
     response = request.execute()
     print(response)
+
+def download_json_file(filename, service=None):
+    if not service:
+        service = credential_service_setup()
+    request = service.files().list(q="title contains '.json'")
+    response = request.execute()
+    return response
+
+def load_and_cache(match_id):
+    file_metadata = {"name": str(match_id)+".json"}
 
 def get_numeric_sheetId(spreadsheetId, sheetId, service=None):
     if not service:
@@ -195,12 +184,13 @@ def read_existing_stats(spreadsheetId, sheetId, service=None):
 
 
 if __name__ == "__main__":
-    sheetId="All Players"
-    service = credential_service_setup()
-    if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
-        create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
-    r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
-    r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    response = download_json_file("example_match.json")
+    # sheetId="All Players"
+    # service = credential_service_setup()
+    # if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
+    #     create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    # r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    # r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    # to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
+    # r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
+    # r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
