@@ -226,6 +226,10 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 			participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
 			to_rtn["Player"] = find_id_in_list(participant_id, "participantId", match_obj["participantIdentities"])["player"]["summonerName"]
 		to_rtn["Number of games"] = 1
+		if find_id_in_list(participant_obj["teamId"], "teamId", match_obj["teams"])["win"] == "Win":
+			to_rtn["Winrate"] = 1.0
+		else:
+			to_rtn["Winrate"] = 0.0
 		to_rtn["Time played"] = match_obj["gameDuration"]
 		to_rtn["Kills"] = participant_obj["stats"]["kills"]
 		to_rtn["Deaths"] = participant_obj["stats"]["deaths"]
@@ -241,10 +245,14 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 		to_rtn["Total CS"] = participant_obj["stats"]["totalMinionsKilled"] + participant_obj["stats"]["neutralMinionsKilled"]
 		opponent = get_opponent(match_obj["participants"], participant_id)
 		converted_cs = convert_cs_diff(participant_obj["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
-		if "10-20" in converted_cs:
-			to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-20"]
+		if opponent and participant_obj["timeline"]["lane"] != "JUNGLE":
+			opponent_cs = convert_cs_diff(opponent["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
+			if "10-20" in converted_cs:
+				to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-20"] - opponent_cs["0-10"] - opponent_cs["10-20"]
+			else:
+				to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-end"] - opponent_cs["0-10"] - opponent_cs["10-end"]
 		else:
-			to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-end"]
+			to_rtn["CS d@20"] = 0
 		to_rtn["CS per min"] = round(float(to_rtn["Total CS"])/(match_obj["gameDuration"]/60), 2)
 		to_rtn["Dmg dealt to champions"] = participant_obj["stats"]["totalDamageDealtToChampions"]
 		to_rtn["Dmg dealt"] = participant_obj["stats"]["totalDamageDealt"]

@@ -32,8 +32,9 @@ def combine_players(x,y):
 	else:
 		raise ValueError("Aggregating stats from two players: " + x["Player"] + ", " + y["Player"])
 
-OVERALL_STATS = ["Player", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
+OVERALL_STATS = ["Player", "Winrate", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
 OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
+							"Winrate": lambda x,y: round(float(x["Winrate"] * x["Number of games"] + y["Winrate"] * y["Number of games"])/(x["Number of games"] + y["Number of games"]), 2),
 							"Number of games": lambda x,y: x["Number of games"] + y["Number of games"],
 							"Time played": lambda x,y: x["Time played"] + y["Time played"],
 							"Kills": lambda x,y: x["Kills"] + y["Kills"],
