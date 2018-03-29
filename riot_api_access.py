@@ -1,7 +1,9 @@
 import requests
 import sys
+import time
 from helpers import *
 BASE = "https://na1.api.riotgames.com"
+QUEUES = [400, 420, 430, 440]
 
 def read_api_key():
 	keyfile = open("riot_secret.txt")
@@ -13,6 +15,13 @@ def get_champion_id_dict(SECRET_API_KEY=None):
 	url = BASE + "/lol/static-data/v3/champions?locale=en_US&dataById=true"
 	headers = {"X-Riot-Token": SECRET_API_KEY}
 	r = requests.get(url,headers=headers)
+	if r.status_code == 429:
+		t = r.json()["Retry-After"]
+		print("Waiting " + str(t) + " seconds and trying again")
+		print("Full response:")
+		print(r.json())
+		time.sleep(t)
+		return get_match_from_id(matchid, SECRET_API_KEY)
 	if r.status_code != 200:
 		print("Get champion id dict failed")
 		return r
@@ -32,6 +41,13 @@ def get_account_id(summoner_name, SECRET_API_KEY=None):
 	url = BASE + "/lol/summoner/v3/summoners/by-name/" + summoner_name
 	headers = {"X-Riot-Token": SECRET_API_KEY}
 	r = requests.get(url, headers=headers)
+	if r.status_code == 429:
+		t = r.json()["Retry-After"]
+		print("Waiting " + str(t) + " seconds and trying again")
+		print("Full response:")
+		print(r.json())
+		time.sleep(t)
+		return get_match_from_id(matchid, SECRET_API_KEY)
 	if r.status_code != 200:
 		print("Get account id failed")
 		return r
@@ -51,6 +67,13 @@ def get_recent_history(accountid, SECRET_API_KEY=None):
 	url = BASE + "/lol/match/v3/matchlists/by-account/" + str(accountid) +  "/recent"
 	headers = {"X-Riot-Token": SECRET_API_KEY}
 	r = requests.get(url, headers=headers)
+	if r.status_code == 429:
+		t = r.json()["Retry-After"]
+		print("Waiting " + str(t) + " seconds and trying again")
+		print("Full response:")
+		print(r.json())
+		time.sleep(t)
+		return get_match_from_id(matchid, SECRET_API_KEY)
 	if r.status_code != 200:
 		print("Get match history failed")
 		return r
@@ -70,6 +93,13 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 	url = BASE + "/lol/match/v3/matches/" + str(matchid)
 	headers = {"X-Riot-Token": SECRET_API_KEY}
 	r = requests.get(url, headers=headers)
+	if r.status_code == 429:
+		t = r.json()["Retry-After"]
+		print("Waiting " + str(t) + " seconds and trying again")
+		print("Full response:")
+		print(r.json())
+		time.sleep(t)
+		return get_match_from_id(matchid, SECRET_API_KEY)
 	if r.status_code != 200:
 		print("Get match object failed")
 		return r
@@ -80,7 +110,7 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		SECRET_API_KEY = read_api_key()
 	url = BASE + "/lol/match/v3/matchlists/by-account/" + str(accountid)
 	headers = {"X-Riot-Token": SECRET_API_KEY}
-	params = {}
+	params = {"queue": QUEUES}
 	if beginTime: params["beginTime"] = beginTime
 	if endTime: params["endTime"] = endTime
 	if champions:
@@ -89,7 +119,15 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 				champions[i] = convert_champ_name_to_id(champions[i])
 		params["champion"] = champions
 	r = requests.get(url, headers=headers, params=params)
+	if r.status_code == 429:
+		t = r.json()["Retry-After"]
+		print("Waiting " + str(t) + " seconds and trying again")
+		print("Full response:")
+		print(r.json())
+		time.sleep(t)
+		return get_match_from_id(matchid, SECRET_API_KEY)
 	if r.status_code != 200:
 		print("Get match history failed")
+		print(r.json())
 		return r
 	return r.json()

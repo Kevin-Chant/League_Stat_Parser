@@ -1,6 +1,7 @@
 import httplib2
 import os
 from collections import OrderedDict
+from helpers import *
 from stats import *
 
 from apiclient import discovery
@@ -107,7 +108,7 @@ def setup_player_stat_sheet(spreadsheetId, sheetId, service=None):
         {
             "range":sheetId+"!A1:AAA1",
             "majorDimension":"ROWS",
-            "values":[PLAYER_STATS_COL_TITLES]
+            "values":[OVERALL_STATS]
         }
         ]
 
@@ -129,7 +130,7 @@ def format_player_stat_sheet(spreadsheetId, sheetId, service=None):
           "sheetId": numeric_sheetId,
           "dimension": "COLUMNS",
           "startIndex": 0,
-          "endIndex": len(PLAYER_STATS_COL_TITLES)+1
+          "endIndex": len(OVERALL_STATS)
         }
       }
     }
@@ -152,7 +153,6 @@ def enter_player_stat_row(spreadsheetId, sheetId, row, stats, service=None):
             "values":[stats]
         }
         ]
-
     request = service.spreadsheets().values().batchUpdate(spreadsheetId=spreadsheetId, body={"valueInputOption": "USER_ENTERED", "data": data})
     response = request.execute()
     return response
@@ -171,12 +171,15 @@ def read_existing_stats(spreadsheetId, sheetId, service=None):
 
 
 if __name__ == "__main__":
-    sheetId="All Players"
+    sheetId="Player Stats"
     service = credential_service_setup()
-    if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
-        create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
-    r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
-    r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    if not get_numeric_sheetId(STATS_TESTING_SPREADSHEET_ID, sheetId, service):
+        create_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
+    r = setup_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
+    r2 = format_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
+    for i in range(len(TEAM_MEMBER_NAMES)):
+        print("Getting stats on " + TEAM_MEMBER_NAMES[i])
+        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], date_to_epoch(3, 24, 2018), date_to_epoch(3, 30, 2018), None, TEAM_MEMBER_ROLES[i])
+        to_write = [stats[key] for key in OVERALL_STATS]
+        r3 = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, i+2, to_write, service)
+        print("Writing stats on " + TEAM_MEMBER_NAMES[i])

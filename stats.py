@@ -1,20 +1,19 @@
-import json
 import os.path
 from collections import defaultdict
 from riot_api_access import *
-from helpers import *
-
+from global_defs import *
+import helpers
 
 
 def find_id_in_list(id, fieldname, lst):
 	for dct in lst:
-		if dct[fieldname] == id:
+		if str(dct[fieldname]).lower() == str(id).lower():
 			return dct
 
 def find_matching_fields_in_list(value, fieldname, lst):
 	matches = []
 	for dct in lst:
-		if dct[fieldname] == value:
+		if str(dct[fieldname]).lower() == str(value).lower():
 			matches.append(dct)
 	return matches
 
@@ -30,7 +29,7 @@ def convert_cs_diff(cs_diff_by_min, gamelength):
 		if "end" not in duration:
 			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * 10, 2)
 		else:
-			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * float(gamelength-1800)/60, 2)
+			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * float(gamelength-int(duration[:2])*60)/60, 2)
 	return cs_diff_by_min
 
 def get_name_from_partic_id(match_obj, partic_id):
@@ -38,9 +37,12 @@ def get_name_from_partic_id(match_obj, partic_id):
 	if "player" in partic_obj:
 		return partic_obj["player"]["summonerName"]
 
+def clean(name):
+	return "".join(name.split(" ")).lower()
+
 def get_partic_id_from_name(match_obj, summoner_name):
 	for partic_identity in match_obj["participantIdentities"]:
-		if "player" in partic_identity and "summonerName" in partic_identity["player"] and partic_identity["player"]["summonerName"] == summoner_name:
+		if "player" in partic_identity and "summonerName" in partic_identity["player"] and clean(partic_identity["player"]["summonerName"]) == clean(summoner_name):
 			return partic_identity["participantId"]
 	return None
 
@@ -211,41 +213,64 @@ def get_all_player_stats(match_obj, participant_id):
 	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats}), **flatten({"Player": get_name_from_partic_id(match_obj, participant_id)})}
 
 def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None, lane_role=None, teamId=None):
-	to_rtn = {}
-	if summoner_name and lane_role:
-		to_rtn["Player"] = summoner_name
-		matching_partic = find_matching_fields_in_list(lane_role[0], "lane", [participant["timeline"] for participant in match_obj["participants"])
-		matching_partic = find_matching_fields_in_list(lane_role[1], "role", matching_partic)
-		participants = [find_id_in_list(m_p['participantId'], "participantId", match_obj["participants"]) for m_p in matching_partic]
-		participant_obj = find_id_in_list(teamId, "teamId", participants)
-		participant_id = participant_obj["participantId"]
-	else:
-		participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
-		to_rtn["Player"] = find_id_in_list(participant_id, "participantId", match_obj["participantIdentities"])["Player"]["summonerName"]
-	to_rtn["Number of games"] = 1
-	to_rtn["Time played"] = match_obj["gameDuration"]
-	to_rtn["Kills"] = participant_obj["stats"]["kills"]
-	to_rtn["Deaths"] = participant_obj["stats"]["deaths"]
-	to_rtn["Assists"] = participant_obj["stats"]["assists"]
-	to_rtn["KDA"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/to_rtn["Deaths"], 2)
-	to_rtn["Team Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(participant_obj["teamId"], teamId, match_obj["participants"]))
-	to_rtn["Kill Participation"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/to_rtn["Team Kills"], 2)
-	to_rtn["Kill Share"] = round(float(to_rtn["Kills"])/to_rtn["Team Kills"], 2)
-	to_rtn["Enemy Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(300-participant_obj["teamId"], teamId, match_obj["participants"]))
-	to_rtn["Death Share"] = round(float(to_rtn["Deaths"])/to_rtn["Enemy Kills"], 2)
-	
-	return None
+	try:
+		to_rtn = {}
+		if summoner_name and lane_role:
+			to_rtn["Player"] = summoner_name
+			matching_partic = find_matching_fields_in_list(lane_role[0], "lane", [participant["timeline"] for participant in match_obj["participants"]])
+			matching_partic = find_matching_fields_in_list(lane_role[1], "role", matching_partic)
+			participants = [find_id_in_list(m_p['participantId'], "participantId", match_obj["participants"]) for m_p in matching_partic]
+			participant_obj = find_id_in_list(teamId, "teamId", participants)
+			participant_id = participant_obj["participantId"]
+		else:
+			participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
+			to_rtn["Player"] = find_id_in_list(participant_id, "participantId", match_obj["participantIdentities"])["player"]["summonerName"]
+		to_rtn["Number of games"] = 1
+		to_rtn["Time played"] = match_obj["gameDuration"]
+		to_rtn["Kills"] = participant_obj["stats"]["kills"]
+		to_rtn["Deaths"] = participant_obj["stats"]["deaths"]
+		to_rtn["Assists"] = participant_obj["stats"]["assists"]
+		to_rtn["KDA"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/max(to_rtn["Deaths"], 1), 2)
+		to_rtn["Team Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(participant_obj["teamId"], "teamId", match_obj["participants"]))
+		to_rtn["Kill Participation"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/to_rtn["Team Kills"], 2)
+		to_rtn["Kill Share"] = round(float(to_rtn["Kills"])/to_rtn["Team Kills"], 2)
+		to_rtn["Enemy Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(300-participant_obj["teamId"], "teamId", match_obj["participants"]))
+		to_rtn["Death Share"] = round(float(to_rtn["Deaths"])/to_rtn["Enemy Kills"], 2)
+		to_rtn["Largest MultiKill"] = participant_obj["stats"]["largestMultiKill"]
+		to_rtn["Longest Killing Spree"] = participant_obj["stats"]["largestKillingSpree"]
+		to_rtn["Total CS"] = participant_obj["stats"]["totalMinionsKilled"] + participant_obj["stats"]["neutralMinionsKilled"]
+		opponent = get_opponent(match_obj["participants"], participant_id)
+		converted_cs = convert_cs_diff(participant_obj["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
+		if "10-20" in converted_cs:
+			to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-20"]
+		else:
+			to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-end"]
+		to_rtn["CS per min"] = round(float(to_rtn["Total CS"])/(match_obj["gameDuration"]/60), 2)
+		to_rtn["Dmg dealt to champions"] = participant_obj["stats"]["totalDamageDealtToChampions"]
+		to_rtn["Dmg dealt"] = participant_obj["stats"]["totalDamageDealt"]
+		to_rtn["Dmg taken"] = participant_obj["stats"]["totalDamageTaken"]
+		to_rtn["Vision Score"] = participant_obj["stats"]["visionScore"]
+		if opponent:
+			to_rtn["Vision score diff"] = participant_obj["stats"]["visionScore"] - opponent["stats"]["visionScore"]
+		else:
+			to_rtn["Vision score diff"] = 0
+		to_rtn["Control wards purchased"] = participant_obj["stats"]["visionWardsBoughtInGame"]
+		to_rtn["Wards Placed"] = participant_obj["stats"]["wardsPlaced"]
+		return to_rtn
+	except:
+		print("Errored on stats for match " + str(match_obj["gameId"]) + ", pid " + str(participant_id))
+		exit(0)
 
-def add_match_results_to_player_stats(match_obj, existing_stats):
+def add_match_results_to_player_stats(curr_stats, existing_stats):
 	agg = defaultdict(lambda: None)
 	for key in OVERALL_STATS:
-		agg[key] = OVERALL_STAT_AGG_FUNCS[key](match_obj, existing_stats)
+		agg[key] = OVERALL_STAT_AGG_FUNCS[key](curr_stats, existing_stats)
 	return agg
 
-def stats_from_filtered_matches(match_ids, key_hierarchy_list, desired_value_list):
-	aggregate_stats = {}
+def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, desired_value_list, lane_role):
+	aggregate_stats = defaultdict(lambda: 0)
 	for match_id in match_ids:
-		match_obj = load_and_cache(match_id)
+		match_obj = helpers.download_match_with_cache(match_id)
 		for i in range(len(key_hierarchy_list)):
 			key_hierarchy = key_hierarchy_list[i]
 			desired_value = desired_value_list[i]
@@ -255,5 +280,15 @@ def stats_from_filtered_matches(match_ids, key_hierarchy_list, desired_value_lis
 					match_obj = None
 		if not match_obj:
 			continue
-		aggregate_stats = add_match_results_to_player_stats(match_obj, aggregate_stats)
+		if lane_role:
+			pid = get_partic_id_from_name(match_obj, summoner_name)
+			participant = find_id_in_list(pid, "participantId", match_obj["participants"])
+			timeline = participant["timeline"]
+			actual_lane = timeline["lane"]
+			actual_role = timeline	["role"]
+			if actual_lane != lane_role[0] and actual_role != lane_role[1]:
+				continue
+		match_stats = get_overall_player_stats(match_obj, participant_id = get_partic_id_from_name(match_obj, summoner_name))
+		aggregate_stats = add_match_results_to_player_stats(match_stats, aggregate_stats)
 	return aggregate_stats
+
