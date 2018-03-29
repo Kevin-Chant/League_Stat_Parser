@@ -1,5 +1,6 @@
 import requests
 import sys
+from helpers import *
 BASE = "https://na1.api.riotgames.com"
 
 def read_api_key():
@@ -71,5 +72,24 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 	r = requests.get(url, headers=headers)
 	if r.status_code != 200:
 		print("Get match object failed")
+		return r
+	return r.json()
+
+def get_match_history(accountid, beginTime=None, endTime=None, champions=None, SECRET_API_KEY=None):
+	if not SECRET_API_KEY:
+		SECRET_API_KEY = read_api_key()
+	url = BASE + "/lol/match/v3/matchlists/by-account/" + str(accountid)
+	headers = {"X-Riot-Token": SECRET_API_KEY}
+	params = {}
+	if beginTime: params["beginTime"] = beginTime
+	if endTime: params["endTime"] = endTime
+	if champions:
+		if type(champions[0]) == str:
+			for i in range(len(champions)):
+				champions[i] = convert_champ_name_to_id(champions[i])
+		params["champion"] = champions
+	r = requests.get(url, headers=headers, params=params)
+	if r.status_code != 200:
+		print("Get match history failed")
 		return r
 	return r.json()

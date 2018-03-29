@@ -1,8 +1,7 @@
 import httplib2
 import os
+from collections import OrderedDict
 from stats import *
-from global_defs import *
-from riot_api_access import *
 
 from apiclient import discovery
 from oauth2client import client
@@ -17,11 +16,9 @@ except ImportError:
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
-SCOPES = "https://www.googleapis.com/auth/drive"
+SCOPES = "https://www.googleapis.com/auth/spreadsheets"
 CLIENT_SECRET_FILE = "client_secret.json"
 APPLICATION_NAME = "Google Sheets API Python Quickstart"
-
-
 
 
 def get_credentials():
@@ -87,16 +84,6 @@ def create_sheets(spreadsheetId, sheetIds, service=None):
     request = service.spreadsheets().batchUpdate(spreadsheetId=spreadsheetId, body={"requests": requests})
     response = request.execute()
     print(response)
-
-def download_json_file(filename, service=None):
-    if not service:
-        service = credential_service_setup()
-    request = service.files().list(q="title contains '.json'")
-    response = request.execute()
-    return response
-
-def load_and_cache(match_id):
-    file_metadata = {"name": str(match_id)+".json"}
 
 def get_numeric_sheetId(spreadsheetId, sheetId, service=None):
     if not service:
@@ -184,13 +171,12 @@ def read_existing_stats(spreadsheetId, sheetId, service=None):
 
 
 if __name__ == "__main__":
-    response = download_json_file("example_match.json")
-    # sheetId="All Players"
-    # service = credential_service_setup()
-    # if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
-    #     create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    # r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    # r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
-    # to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
-    # r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
-    # r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    sheetId="All Players"
+    service = credential_service_setup()
+    if not get_numeric_sheetId(PLAYER_STATS_SPREADSHEET_ID, sheetId, service):
+        create_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    r = setup_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    r2 = format_player_stat_sheet(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)
+    to_write = [stats[key] for key in PLAYER_STATS_COL_TITLES]
+    r3 = enter_player_stat_row(PLAYER_STATS_SPREADSHEET_ID, sheetId, 2, to_write, service)
+    r4 = read_existing_stats(PLAYER_STATS_SPREADSHEET_ID, sheetId, service)

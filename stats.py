@@ -2,31 +2,8 @@ import json
 import os.path
 from collections import defaultdict
 from riot_api_access import *
+from helpers import *
 
-
-def store_json(json_obj, filename, force=False):
-	if os.path.isfile(filename) and not force:
-		print("Cannot store at " + filename + ".\nFile already exists.")
-		return False
-	if not isinstance(json_obj, dict):
-		print("Must be given a valid dictionary to store")
-		return False
-	with open(filename, 'w') as fp:
-		json.dump(json_obj, fp)
-		return True
-
-def load_json(filename):
-	if not os.path.isfile(filename):
-		print("File cannot be found")
-		return None
-	with open(filename) as fp:
-		return json.load(fp)
-
-def update_champ_ids(force=False):
-	dct = get_champion_id_dict()
-	if not store_json(dct, "champ_ids.json", force):
-		return None
-	return dct
 
 
 def find_id_in_list(id, fieldname, lst):
@@ -233,8 +210,30 @@ def get_all_player_stats(match_obj, participant_id):
 	cs_stats = get_cs_stats(match_obj, participant_id)
 	return {**flatten({"Combat Stats": c_stats}), **flatten({"Dmg Stats": d_stats}), **flatten({"Dmg Breakdown": d_bkdn}), **flatten({"Vision Stats": v_stats}), **flatten({"CS Stats": cs_stats}), **flatten({"Player": get_name_from_partic_id(match_obj, participant_id)})}
 
-def get_overall_player_stats(match_obj, participant_id):
-	#TODO
+def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None, lane_role=None, teamId=None):
+	to_rtn = {}
+	if summoner_name and lane_role:
+		to_rtn["Player"] = summoner_name
+		matching_partic = find_matching_fields_in_list(lane_role[0], "lane", [participant["timeline"] for participant in match_obj["participants"])
+		matching_partic = find_matching_fields_in_list(lane_role[1], "role", matching_partic)
+		participants = [find_id_in_list(m_p['participantId'], "participantId", match_obj["participants"]) for m_p in matching_partic]
+		participant_obj = find_id_in_list(teamId, "teamId", participants)
+		participant_id = participant_obj["participantId"]
+	else:
+		participant_obj = find_id_in_list(participant_id, "participantId", match_obj["participants"])
+		to_rtn["Player"] = find_id_in_list(participant_id, "participantId", match_obj["participantIdentities"])["Player"]["summonerName"]
+	to_rtn["Number of games"] = 1
+	to_rtn["Time played"] = match_obj["gameDuration"]
+	to_rtn["Kills"] = participant_obj["stats"]["kills"]
+	to_rtn["Deaths"] = participant_obj["stats"]["deaths"]
+	to_rtn["Assists"] = participant_obj["stats"]["assists"]
+	to_rtn["KDA"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/to_rtn["Deaths"], 2)
+	to_rtn["Team Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(participant_obj["teamId"], teamId, match_obj["participants"]))
+	to_rtn["Kill Participation"] = round(float(to_rtn["Kills"] + to_rtn["Assists"])/to_rtn["Team Kills"], 2)
+	to_rtn["Kill Share"] = round(float(to_rtn["Kills"])/to_rtn["Team Kills"], 2)
+	to_rtn["Enemy Kills"] = sum(p["stats"]["kills"] for p in find_matching_fields_in_list(300-participant_obj["teamId"], teamId, match_obj["participants"]))
+	to_rtn["Death Share"] = round(float(to_rtn["Deaths"])/to_rtn["Enemy Kills"], 2)
+	
 	return None
 
 def add_match_results_to_player_stats(match_obj, existing_stats):
