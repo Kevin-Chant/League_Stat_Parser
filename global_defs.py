@@ -32,7 +32,7 @@ def combine_players(x,y):
 	else:
 		raise ValueError("Aggregating stats from two players: " + x["Player"] + ", " + y["Player"])
 
-OVERALL_STATS = ["Player", "Winrate", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
+OVERALL_STATS = ["Player", "Winrate", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "DPM", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
 OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
 							"Winrate": lambda x,y: round(float(x["Winrate"] * x["Number of games"] + y["Winrate"] * y["Number of games"])/(x["Number of games"] + y["Number of games"]), 2),
 							"Number of games": lambda x,y: x["Number of games"] + y["Number of games"],
@@ -57,6 +57,7 @@ OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
 							"CS per min":lambda x,y: round(float(x["CS per min"] * x["Time played"] + y["CS per min"] * y["Time played"])/max(x["Time played"] + y["Time played"],1), 2),
 							"Dmg dealt to champions": lambda x,y: x["Dmg dealt to champions"] + y["Dmg dealt to champions"],
 							"Dmg dealt to champions per game": lambda x,y: round(float(x["Dmg dealt to champions"] + y["Dmg dealt to champions"])/(x["Number of games"] + y["Number of games"]), 2),
+							"DPM": lambda x,y: round(float(x["DPM"]*x["Time played"] + y["DPM"] * y["Time played"])/max(x["Time played"] + y["Time played"], 1),2),
 							"Dmg dealt": lambda x,y: x["Dmg dealt"] + y["Dmg dealt"],
 							"Dmg dealt per game": lambda x,y: round(float(x["Dmg dealt"] + y["Dmg dealt"])/(x["Number of games"] + y["Number of games"]), 2),
 							"Dmg taken": lambda x,y: x["Dmg taken"] + y["Dmg taken"],

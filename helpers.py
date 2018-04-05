@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import time
 import riot_api_access as riot
 from stats import *
 
@@ -59,15 +60,10 @@ def update_match_manifest(match_ids, player_dict_lists):
     return manifest
 
 def date_to_epoch(month=None, day=None, year=None):
-    now = datetime.datetime.now()
-    if not month:
-        month = now.month
-    if not day:
-        day = now.day
-    if not year:
-        year = now.year
+    if not month and not day and not year:
+        return int(time.time())*1000
     dt = datetime.datetime(year, month, day)
-    return int((dt-datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000)-28800
+    return int((dt-datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000)+28800000
 
 def get_and_cache_user_history(summonername, start_epoch=None, end_epoch=None, champion=None, lane_role=None):
     aid = riot.get_account_id(summonername)

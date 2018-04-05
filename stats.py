@@ -257,6 +257,7 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 			to_rtn["CS d@20"] = 0
 		to_rtn["CS per min"] = round(float(to_rtn["Total CS"])/(match_obj["gameDuration"]/60), 2)
 		to_rtn["Dmg dealt to champions"] = participant_obj["stats"]["totalDamageDealtToChampions"]
+		to_rtn["DPM"] = round(float(to_rtn["Dmg dealt to champions"]/to_rtn["Time played"])*60, 2)
 		to_rtn["Dmg dealt"] = participant_obj["stats"]["totalDamageDealt"]
 		to_rtn["Dmg taken"] = participant_obj["stats"]["totalDamageTaken"]
 		to_rtn["Vision Score"] = participant_obj["stats"]["visionScore"]
