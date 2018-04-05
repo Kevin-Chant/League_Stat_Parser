@@ -126,6 +126,9 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		print(r.json())
 		time.sleep(t)
 		return get_match_from_id(matchid, SECRET_API_KEY)
+	if r.status_code == 404:
+		print("There is no match history in that time frame")
+		return {"matches":[]}
 	if r.status_code != 200:
 		print("Get match history failed")
 		print(r.json())

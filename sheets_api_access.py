@@ -1,8 +1,10 @@
 import httplib2
 import os
+import datetime
 from collections import OrderedDict
 from helpers import *
 from stats import *
+import sys
 
 from apiclient import discovery
 from oauth2client import client
@@ -176,10 +178,17 @@ if __name__ == "__main__":
     if not get_numeric_sheetId(STATS_TESTING_SPREADSHEET_ID, sheetId, service):
         create_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
     r = setup_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
-    r2 = format_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
+    r = format_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
+    r = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, 2, ["Homework 4/5 thru 4/12"], service)
     for i in range(len(TEAM_MEMBER_NAMES)):
         print("Getting stats on " + TEAM_MEMBER_NAMES[i])
-        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], date_to_epoch(3, 24, 2018), date_to_epoch(3, 30, 2018), None, TEAM_MEMBER_ROLES[i])
+        sys.stdout.flush()
+        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], date_to_epoch(4,5,2018), date_to_epoch(), None, TEAM_MEMBER_ROLES[i])
+        stats["Player"] = TEAM_MEMBER_NAMES[i]
         to_write = [stats[key] for key in OVERALL_STATS]
-        r3 = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, i+2, to_write, service)
+        r = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, i+3, to_write, service)
         print("Writing stats on " + TEAM_MEMBER_NAMES[i])
+        sys.stdout.flush()
+    print("Writing time")
+    to_write = ["Last updated", str(datetime.date.today())]
+    r4 = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, len(TEAM_MEMBER_NAMES)+3, to_write, service)

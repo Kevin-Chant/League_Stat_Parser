@@ -69,5 +69,5 @@ OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
 							"Wards Placed per Game": lambda x,y: round(float(x["Wards Placed"] + y["Wards Placed"])/(x["Number of games"] + y["Number of games"]),2)
 							}
 
-TEAM_MEMBER_NAMES = ["däddykun", "shrek wazowski", "kadorr", "Feãr", "Áz1r", "Alanegod93", "sallad", "gezang"]
-TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]
+TEAM_MEMBER_NAMES = ["Däddy Kun", "Shrek Wazowski", "Kadorr", "Rosin", "Feãr", "Áz1r", "AlaneGod93", "sallaD", "Gezang"]
+TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]

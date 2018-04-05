@@ -58,9 +58,16 @@ def update_match_manifest(match_ids, player_dict_lists):
     store_json(manifest, ".match_cache/.manifest.json", True)
     return manifest
 
-def date_to_epoch(month, day, year):
+def date_to_epoch(month=None, day=None, year=None):
+    now = datetime.datetime.now()
+    if not month:
+        month = now.month
+    if not day:
+        day = now.day
+    if not year:
+        year = now.year
     dt = datetime.datetime(year, month, day)
-    return int((dt-datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000)
+    return int((dt-datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000)-28800
 
 def get_and_cache_user_history(summonername, start_epoch=None, end_epoch=None, champion=None, lane_role=None):
     aid = riot.get_account_id(summonername)
@@ -68,6 +75,22 @@ def get_and_cache_user_history(summonername, start_epoch=None, end_epoch=None, c
     stats = stats_from_filtered_matches([match["gameId"] for match in history], summonername, [], [], lane_role)
     return stats
 
+
+if __name__ == "__main__":
+    aid = riot.get_account_id("alanegod93")
+    history = riot.get_match_history(aid, date_to_epoch(3, 24, 2018), None, None)["matches"]
+    for match_id in [match["gameId"] for match in history]:
+        match_obj = download_match_with_cache(match_id)
+        pid = get_partic_id_from_name(match_obj, "alanegod93")
+        participant = find_id_in_list(pid, "participantId", match_obj["participants"])
+        timeline = participant["timeline"]
+        lane = timeline["lane"]
+        role = timeline["role"]
+        if lane != "BOTTOM" and role != "DUO_CARRY":
+            stats = participant["stats"]
+            kda = (stats["kills"], stats["deaths"], stats["assists"])
+            print("Filtering " + str(match_id) + " with " + lane + ", " + role)
+            print("Kda is " + str(kda))
 
 # stats = get_and_cache_user_history("Alanegod93", date_to_epoch(3, 24, 2018), date_to_epoch(3, 29, 2018), None, ("BOTTOM", "DUO_CARRY"))
 # print(stats)

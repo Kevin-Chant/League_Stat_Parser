@@ -249,8 +249,10 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 			opponent_cs = convert_cs_diff(opponent["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
 			if "10-20" in converted_cs:
 				to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-20"] - opponent_cs["0-10"] - opponent_cs["10-20"]
-			else:
+			elif "10-end" in converted_cs:
 				to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-end"] - opponent_cs["0-10"] - opponent_cs["10-end"]
+			else:
+				to_rtn["CS d@20"] = converted_cs["0-10"] - opponent_cs["0-10"]
 		else:
 			to_rtn["CS d@20"] = 0
 		to_rtn["CS per min"] = round(float(to_rtn["Total CS"])/(match_obj["gameDuration"]/60), 2)
@@ -265,8 +267,9 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 		to_rtn["Control wards purchased"] = participant_obj["stats"]["visionWardsBoughtInGame"]
 		to_rtn["Wards Placed"] = participant_obj["stats"]["wardsPlaced"]
 		return to_rtn
-	except:
+	except Exception as e:
 		print("Errored on stats for match " + str(match_obj["gameId"]) + ", pid " + str(participant_id))
+		print(e)
 		exit(0)
 
 def add_match_results_to_player_stats(curr_stats, existing_stats):
@@ -279,6 +282,8 @@ def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, de
 	aggregate_stats = defaultdict(lambda: 0)
 	for match_id in match_ids:
 		match_obj = helpers.download_match_with_cache(match_id)
+		if match_obj["gameDuration"] < 600:
+			continue
 		for i in range(len(key_hierarchy_list)):
 			key_hierarchy = key_hierarchy_list[i]
 			desired_value = desired_value_list[i]
