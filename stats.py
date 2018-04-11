@@ -2,55 +2,9 @@ import os.path
 from collections import defaultdict
 from riot_api_access import *
 from global_defs import *
-import helpers
+from helpers import *
 
 
-def find_id_in_list(id, fieldname, lst):
-	for dct in lst:
-		if str(dct[fieldname]).lower() == str(id).lower():
-			return dct
-
-def find_matching_fields_in_list(value, fieldname, lst):
-	matches = []
-	for dct in lst:
-		if str(dct[fieldname]).lower() == str(value).lower():
-			matches.append(dct)
-	return matches
-
-def get_subfields_in_list(fieldname, lst):
-	fields = []
-	for dct in lst:
-		if fieldname in dct:
-			fields.append(dct[fieldname])
-	return fields
-
-def convert_cs_diff(cs_diff_by_min, gamelength):
-	for duration in cs_diff_by_min:
-		if "end" not in duration:
-			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * 10, 2)
-		else:
-			cs_diff_by_min[duration] = round(cs_diff_by_min[duration] * float(gamelength-int(duration[:2])*60)/60, 2)
-	return cs_diff_by_min
-
-def get_name_from_partic_id(match_obj, partic_id):
-	partic_obj = find_id_in_list(partic_id, "participantId", match_obj["participantIdentities"])
-	if "player" in partic_obj:
-		return partic_obj["player"]["summonerName"]
-
-def clean(name):
-	return "".join(name.split(" ")).lower()
-
-def get_partic_id_from_name(match_obj, summoner_name):
-	for partic_identity in match_obj["participantIdentities"]:
-		if "player" in partic_identity and "summonerName" in partic_identity["player"] and clean(partic_identity["player"]["summonerName"]) == clean(summoner_name):
-			return partic_identity["participantId"]
-	return None
-
-def get_opponent(participants, participant_id):
-	participant_role = find_id_in_list(participant_id, "participantId", participants)["timeline"]["role"]
-	for other in participants:
-		if participant_id != other["participantId"] and other["timeline"]["role"] == participant_role:
-			return other
 
 def get_basic_game_info(match_obj):
 	blue_picks = get_subfields_in_list("championId", find_matching_fields_in_list(100, "teamId", match_obj["participants"]))
@@ -244,9 +198,9 @@ def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None,
 		to_rtn["Longest Killing Spree"] = participant_obj["stats"]["largestKillingSpree"]
 		to_rtn["Total CS"] = participant_obj["stats"]["totalMinionsKilled"] + participant_obj["stats"]["neutralMinionsKilled"]
 		opponent = get_opponent(match_obj["participants"], participant_id)
-		converted_cs = convert_cs_diff(participant_obj["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
+		converted_cs = convert_cs_diff(participant_obj["timeline"]["creepsPerMinDeltas"].copy(), match_obj["gameDuration"])
 		if opponent and participant_obj["timeline"]["lane"] != "JUNGLE":
-			opponent_cs = convert_cs_diff(opponent["timeline"]["creepsPerMinDeltas"], match_obj["gameDuration"])
+			opponent_cs = convert_cs_diff(opponent["timeline"]["creepsPerMinDeltas"].copy(), match_obj["gameDuration"])
 			if "10-20" in converted_cs:
 				to_rtn["CS d@20"] = converted_cs["0-10"] + converted_cs["10-20"] - opponent_cs["0-10"] - opponent_cs["10-20"]
 			elif "10-end" in converted_cs:
@@ -282,7 +236,7 @@ def add_match_results_to_player_stats(curr_stats, existing_stats):
 def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, desired_value_list, lane_role):
 	aggregate_stats = defaultdict(lambda: 0)
 	for match_id in match_ids:
-		match_obj = helpers.download_match_with_cache(match_id)
+		match_obj = download_match_with_cache(match_id)
 		if match_obj["gameDuration"] < 600:
 			continue
 		for i in range(len(key_hierarchy_list)):
@@ -306,3 +260,8 @@ def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, de
 		aggregate_stats = add_match_results_to_player_stats(match_stats, aggregate_stats)
 	return aggregate_stats
 
+def get_and_cache_user_history(summonername, start_epoch=None, end_epoch=None, champion=None, lane_role=None):
+    aid = riot.get_account_id(summonername)
+    history = riot.get_match_history(aid, start_epoch, end_epoch, champion)["matches"]
+    stats = stats_from_filtered_matches([match["gameId"] for match in history], summonername, [], [], lane_role)
+    return stats

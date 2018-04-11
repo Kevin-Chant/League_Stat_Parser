@@ -1,9 +1,10 @@
 from collections import OrderedDict
 from riot_api_access import *
-from stats import *
+from helpers import *
 
 PLAYER_STATS_SPREADSHEET_ID = "1fu8T513ZZhWDn0Fimc01evXSW6lwxUJI49gHq_BUow8"
-STATS_TESTING_SPREADSHEET_ID = "1haqC4FS0pY2bVe9agDLDi5KtMvk4hzRlcl9RvI-We4s"
+RMT_STATS_SHEET = "1haqC4FS0pY2bVe9agDLDi5KtMvk4hzRlcl9RvI-We4s"
+STATS_TESTING_SHEET = "1MLtNlYn7TN-ef0f75zzWmTtO2sHEsKNv41D4dNU9awg"
 CUSTOM_TEAM_BG_COLOR = {"red": "183", "green": "225", "blue": "205"}
 
 # PLAYER_STATS_KEY_HIERARCHY = OrderedDict([  ("Combat Stats", ["Kills", "Deaths", "Assists", "KDA", "Kill Participation", "Kill Share", "Team Kills", "Enemy Kills", "Death Share", "Largest MultiKill", "Longest Killing Spree"]),
@@ -39,7 +40,7 @@ OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
 							"Time played": lambda x,y: x["Time played"] + y["Time played"],
 							"Kills": lambda x,y: x["Kills"] + y["Kills"],
 							"Kills per Game": lambda x,y: round(float(x["Kills"] + y["Kills"])/(x["Number of games"] + y["Number of games"]), 2),
-							"Deaths": lambda x,y: x["Deaths"] + y["Deaths"],
+							"Deaths": lambda x,y: x ["Deaths"] + y["Deaths"],
 							"Deaths per Game": lambda x,y: round(float(x["Deaths"] + y["Deaths"])/(x["Number of games"] + y["Number of games"]), 2),
 							"Assists": lambda x,y: x["Assists"] + y["Assists"],
 							"Assists per Game": lambda x,y: round(float(x["Assists"] + y["Assists"])/(x["Number of games"] + y["Number of games"]), 2),
@@ -69,6 +70,80 @@ OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
 							"Wards Placed": lambda x,y: x["Wards Placed"] + y["Wards Placed"],
 							"Wards Placed per Game": lambda x,y: round(float(x["Wards Placed"] + y["Wards Placed"])/(x["Number of games"] + y["Number of games"]),2)
 							}
+TRACKED_CHAMPION_STATS = ["Wins", "Losses", "Bans", "Num Games", "Total gametime", "Kills", "Deaths", "Assists", "Team Kills", "Enemy Kills", "Total CS", "Total CS diff @20", "Dmg to champs", "Dmg dealt", "Dmg taken"]
+ON_DEMAND_CHAMPION_STATS = ["Presence", "Win %", "Kill Partic", "Kill Share", "Death Share", "Kills/game", "Deaths/game", "Assists/game", "Avg CS", "CS per min", "Avg CSD@20", "Dmg to champs per game", "Dmg dealt per game", "Dmg taken per game"]
+
+def get_csd20(match, cid):
+	p_ob =find_id_in_list(cid, "championId", match["participants"]) 
+	opponent = get_opponent(match["participants"], p_ob["participantId"])
+	to_rtn = 0
+	cs = p_ob["timeline"]["creepsPerMinDeltas"].copy()
+	if opponent and p_ob["timeline"]["lane"] != "JUNGLE":
+		opponent_cs = opponent["timeline"]["creepsPerMinDeltas"].copy()
+		gameDuration = match["gameDuration"]
+		for duration in opponent_cs:
+			if not "end" in duration:
+				cs[duration] *= 10
+				opponent_cs[duration] *= 10
+			else:
+				cs[duration] *= gameDuration/60 - int(duration[:2])
+				opponent_cs[duration] *= gameDuration/60 - int(duration[:2])
+		to_rtn = cs["0-10"] - opponent_cs["0-10"]
+		if "10-20" in cs:
+			to_rtn += cs["10-20"] - opponent_cs["10-20"]
+		elif "10-end" in cs:
+			to_rtn += cs["10-end"] - opponent_cs["10-end"]
+	return to_rtn
+
+BANNED_CHAMP_STATS = {	"Wins": 0,
+						"Losses": 0,
+						"Bans": 1,
+						"Num Games": 0,
+						"Total gametime": 0,
+						"Kills": 0,
+						"Deaths": 0,
+						"Assists": 0,
+						"Team Kills": 0,
+						"Enemy Kills": 0,
+						"Total CS": 0,
+						"Total CS diff @20": 0,
+						"Dmg to champs": 0,
+						"Dmg dealt": 0,
+						"Dmg taken": 0
+						}
+
+STAT_COLLECTION_METHODS = { "Wins": lambda match, cid: 1 if find_id_in_list(find_id_in_list(cid, "championId", match["participants"])["teamId"], "teamId", match["teams"])["win"] == "Win" else 0,
+							"Losses": lambda match, cid: 1 if find_id_in_list(find_id_in_list(cid, "championId", match["participants"])["teamId"], "teamId", match["teams"])["win"] == "Fail" else 0,
+							"Bans": lambda match, cid: 0,
+							"Num Games": lambda match, cid: 1,
+							"Total gametime": lambda match, cid: match["gameDuration"],
+							"Kills": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["kills"],
+							"Deaths": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["deaths"],
+							"Assists": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["assists"],
+							"Team Kills": lambda match, cid: sum([p["stats"]["kills"] for p in find_matching_fields_in_list(find_id_in_list(cid, "championId", match["participants"])["teamId"], "teamId", match["participants"])]),
+							"Enemy Kills": lambda match, cid: sum([p["stats"]["kills"] for p in find_matching_fields_in_list(300 - find_id_in_list(cid, "championId", match["participants"])["teamId"], "teamId", match["participants"])]),
+							"Total CS": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["totalMinionsKilled"] + find_id_in_list(cid, "championId", match["participants"])["stats"]["neutralMinionsKilled"],
+							"Total CS diff @20": get_csd20,
+							"Dmg to champs": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["totalDamageDealtToChampions"],
+							"Dmg dealt": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["totalDamageDealt"],
+							"Dmg taken": lambda match, cid: find_id_in_list(cid, "championId", match["participants"])["stats"]["totalDamageTaken"]
+							}
+STAT_CALCULATION_METHODS = {"Presence": lambda stats: stats["Num Games"] + stats["Bans"],
+							"Win %": lambda stats: round(float(stats["Wins"])/max(stats["Num Games"],1),2),
+							"Kill Partic": lambda stats: round(float(stats["Kills"] + stats["Assists"])/max(stats["Team Kills"],1),2),
+							"Kill Share": lambda stats: round(float(stats["Kills"])/max(stats["Team Kills"],1),2),
+							"Death Share": lambda stats: round(float(stats["Deaths"])/max(stats["Enemy Kills"],1),2),
+							"Kills/game": lambda stats: round(float(stats["Kills"])/max(stats["Num Games"],1),2),
+							"Deaths/game": lambda stats: round(float(stats["Deaths"])/max(stats["Num Games"],1),2),
+							"Assists/game": lambda stats: round(float(stats["Assists"])/max(stats["Num Games"],1),2),
+							"Avg CS": lambda stats: round(float(stats["Total CS"])/max(stats["Num Games"],1),2),
+							"CS per min": lambda stats: round(float(stats["Total CS"])/max(stats["Total gametime"] * 60,1),2),
+							"Avg CSD@20": lambda stats: round(float(stats["Total CS diff @20"])/max(stats["Num Games"],1),2),
+							"Dmg to champs per game": lambda stats: round(float(stats["Dmg to champs"])/max(stats["Num Games"],1)),
+							"Dmg dealt per game": lambda stats: round(float(stats["Dmg dealt"])/max(stats["Num Games"],1)),
+							"Dmg taken per game": lambda stats: round(float(stats["Dmg taken"])/max(stats["Num Games"],1))
+							}
+
 
 TEAM_MEMBER_NAMES = ["Däddy Kun", "Shrek Wazowski", "Kadorr", "Rosin", "Feãr", "Áz1r", "AlaneGod93", "sallaD", "Gezang"]
 TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]

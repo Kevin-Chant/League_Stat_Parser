@@ -4,6 +4,7 @@ import datetime
 from collections import OrderedDict
 from helpers import *
 from stats import *
+from champion_stats import *
 import sys
 
 from apiclient import discovery
@@ -99,7 +100,8 @@ def get_numeric_sheetId(spreadsheetId, sheetId, service=None):
     else:
         return title_dict[sheetId]
 
-def setup_player_stat_sheet(spreadsheetId, sheetId, service=None):
+
+def enter_row(spreadsheetId, sheetId, row, to_enter, service=None):
     numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
     if not numeric_sheetId:
         print("Error: Could not find sheet " + sheetId)
@@ -108,12 +110,11 @@ def setup_player_stat_sheet(spreadsheetId, sheetId, service=None):
         service = credential_service_setup()
     data = [
         {
-            "range":sheetId+"!A1:AAA1",
+            "range":sheetId+"!A" + str(row) + ":AAA" + str(row),
             "majorDimension":"ROWS",
-            "values":[OVERALL_STATS]
+            "values":[to_enter]
         }
         ]
-
     request = service.spreadsheets().values().batchUpdate(spreadsheetId=spreadsheetId, body={"valueInputOption": "USER_ENTERED", "data": data})
     response = request.execute()
     return response
@@ -141,7 +142,7 @@ def format_player_stat_sheet(spreadsheetId, sheetId, service=None):
     response = request.execute()
     return response
 
-def enter_player_stat_row(spreadsheetId, sheetId, row, stats, service=None):
+def enter_row(spreadsheetId, sheetId, row, to_enter, service=None):
     numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
     if not numeric_sheetId:
         print("Error: Could not find sheet " + sheetId)
@@ -152,7 +153,7 @@ def enter_player_stat_row(spreadsheetId, sheetId, row, stats, service=None):
         {
             "range":sheetId+"!A" + str(row) + ":BK" + str(row),
             "majorDimension":"ROWS",
-            "values":[stats]
+            "values":[to_enter]
         }
         ]
     request = service.spreadsheets().values().batchUpdate(spreadsheetId=spreadsheetId, body={"valueInputOption": "USER_ENTERED", "data": data})
@@ -171,24 +172,42 @@ def read_existing_stats(spreadsheetId, sheetId, service=None):
     response = request.execute()
     return response
 
-
-if __name__ == "__main__":
+def update_rmt_stats(service=None):
+    if not service:
+        service = credential_service_setup()
     sheetId="Player Stats"
-    service = credential_service_setup()
-    if not get_numeric_sheetId(STATS_TESTING_SPREADSHEET_ID, sheetId, service):
-        create_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
-    r = setup_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
-    r = format_player_stat_sheet(STATS_TESTING_SPREADSHEET_ID, sheetId, service)
-    r = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, 2, ["Homework 4/5 thru 4/12"], service)
+    if not get_numeric_sheetId(RMT_STATS_SHEET, sheetId, service):
+        create_sheet(RMT_STATS_SHEET, sheetId, service)
+    r = enter_row(RMT_STATS_SHEET, sheetId, 1, OVERALL_STATS, service)
+    r = format_player_stat_sheet(RMT_STATS_SHEET, sheetId, service)
+    r = enter_row(RMT_STATS_SHEET, sheetId, 2, ["Homework 4/5 thru 4/12"], service)
     for i in range(len(TEAM_MEMBER_NAMES)):
         print("Getting stats on " + TEAM_MEMBER_NAMES[i])
         sys.stdout.flush()
         stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], date_to_epoch(4,5,2018), date_to_epoch(), None, TEAM_MEMBER_ROLES[i])
         stats["Player"] = TEAM_MEMBER_NAMES[i]
         to_write = [stats[key] for key in OVERALL_STATS]
-        r = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, i+3, to_write, service)
+        r = enter_row(RMT_STATS_SHEET, sheetId, i+3, to_write, service)
         print("Writing stats on " + TEAM_MEMBER_NAMES[i])
         sys.stdout.flush()
     print("Writing time")
     to_write = ["Last updated", str(datetime.date.today())]
-    r4 = enter_player_stat_row(STATS_TESTING_SPREADSHEET_ID, sheetId, len(TEAM_MEMBER_NAMES)+3, to_write, service)
+    r4 = enter_row(RMT_STATS_SHEET, sheetId, len(TEAM_MEMBER_NAMES)+3, to_write, service)
+
+
+if __name__ == "__main__":
+    update_rmt_stats()
+    # service = credential_service_setup()
+    # sheetId="Champion Stats Test"
+    # if not get_numeric_sheetId(STATS_TESTING_SHEET, sheetId, service):
+    #     create_sheet(STATS_TESTING_SHEET, sheetId, service)
+
+    # m_obs = [download_match_with_cache(id) for id in [2751554415, 2751933982, 2751934225, 2751934437, 2751934627]]
+    # stats = agg_champ_stats(m_obs)
+    # r = enter_row(STATS_TESTING_SHEET, sheetId, 1, ["Champion Name"] + TRACKED_CHAMPION_STATS + ON_DEMAND_CHAMPION_STATS, service)
+    # i = 2
+    # for cid in stats.keys():
+    #     ods = calculate_ods(stats[cid])
+    #     to_write = [convert_champ_id_to_name(cid)] + [stats[cid][key] for key in TRACKED_CHAMPION_STATS] + [ods[key] for key in ON_DEMAND_CHAMPION_STATS]
+    #     enter_row(STATS_TESTING_SHEET, sheetId, i, to_write, service)
+    #     i+=1
