@@ -1,14 +1,14 @@
 import requests
-BASE = "https://na1.api.riotgames.com"
+BASE = "https://americas.api.riotgames.com"
 
 def load_tournament_key():
 	keyfile = open("tournament_key.txt")
 	return keyfile.readlines()[0].strip()
 
 def mock_provider():
-	endpoint = "/lol/tournament/v3/providers/"
+	endpoint = "/lol/tournament-stub/v3/providers/"
 	pregparams = {	"region": "NA",
-					"url": "http://www.risenesports.org/"
+					"url": "http://risenesports.org"
 					}
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
@@ -33,3 +33,29 @@ def mock_tournament_codes(tid, allowed_sids=None, numcodes=None):
 	body = {"TournamentCodeParameters": tcodeparams}
 	r = requests.post(url, headers=headers, json=body)
 	return r
+
+def get_tournament_match(mid, tcode):
+	endpoint = "/lol/tournament/v3/matches/" + str(mid) + "/by-tournament-code/"+str(tcode)
+	api_key = load_tournament_key()
+	headers = {"X-Riot-Token": api_key}
+	url = BASE + endpoint
+	r = requests.get(url, headers=headers)
+	if r.status_code != 200:
+		print("Failed to get match " + str(mid) + " for tcode " + str(tcode))
+		return r
+	return r.json()
+
+
+def get_matches_for_tcode(tcode):
+	endpoint = "/lol/tournament/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
+	api_key = load_tournament_key()
+	headers = {"X-Riot-Token": api_key}
+	url = BASE + endpoint
+	r = requests.get(url, headers=headers)
+	if r.status_code != 200:
+		print("Failed to get matches for tcode " + str(tcode))
+		return r
+	matches = []
+	for match_id in r.json():
+		matches.append(get_tournament_match(match_id, tcode))
+	return matches
