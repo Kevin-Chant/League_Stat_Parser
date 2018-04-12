@@ -5,16 +5,30 @@ def load_tournament_key():
 	keyfile = open("tournament_key.txt")
 	return keyfile.readlines()[0].strip()
 
-def mock_provider():
-	endpoint = "/lol/tournament-stub/v3/providers/"
+def provider():
+	endpoint = "/lol/tournament/v3/providers/"
 	pregparams = {	"region": "NA",
-					"url": "http://risenesports.org"
+					"url": "https://www.risenesports.org/"
 					}
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
 	body = {"ProviderRegistrationParameters": pregparams}
 	url = BASE + endpoint
 	r = requests.post(url, headers=headers, json=body)
+	return r
+
+pid = 1567
+
+def tournament():
+	endpoint = "/lol/tournament/v3/tournaments"
+	api_key = load_tournament_key()
+	tparams= {"name": "Risen Test Tournament",
+  	"providerId": pid
+	}
+	headers = {"X-Riot-Token": api_key}
+	body={"TournamentRegistrationParameters": tparams}
+	url = BASE + endpoint
+	r = requests.post(url, headers=headers, json=tparams)
 	return r
 
 def mock_tournament_codes(tid, allowed_sids=None, numcodes=None):
