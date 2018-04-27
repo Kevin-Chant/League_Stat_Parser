@@ -3,3 +3,7 @@ tournament_key.txt
 client_secret.json
 db_pass.txt
 .match_cache/
+build/
+dist/
+__pycache__/
+*.spec

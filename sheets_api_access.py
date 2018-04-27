@@ -142,7 +142,7 @@ def format_player_stat_sheet(spreadsheetId, sheetId, service=None):
     response = request.execute()
     return response
 
-def enter_row(spreadsheetId, sheetId, row, to_enter, service=None):
+def enter_rows(spreadsheetId, sheetId, row, to_enter, service=None):
     numeric_sheetId = get_numeric_sheetId(spreadsheetId, sheetId)
     if not numeric_sheetId:
         print("Error: Could not find sheet " + sheetId)
@@ -151,9 +151,9 @@ def enter_row(spreadsheetId, sheetId, row, to_enter, service=None):
         service = credential_service_setup()
     data = [
         {
-            "range":sheetId+"!A" + str(row) + ":BK" + str(row),
+            "range":sheetId+"!A" + str(row) + ":BK" + str(row+len(to_enter)),
             "majorDimension":"ROWS",
-            "values":[to_enter]
+            "values":to_enter
         }
         ]
     request = service.spreadsheets().values().batchUpdate(spreadsheetId=spreadsheetId, body={"valueInputOption": "USER_ENTERED", "data": data})
@@ -172,31 +172,49 @@ def read_existing_stats(spreadsheetId, sheetId, service=None):
     response = request.execute()
     return response
 
-def update_rmt_stats(service=None):
+def update_rmt_stats(start_date, service=None):
     if not service:
         service = credential_service_setup()
-    sheetId="Player Stats"
+    sheetId="Recent Player Stats"
     if not get_numeric_sheetId(RMT_STATS_SHEET, sheetId, service):
         create_sheet(RMT_STATS_SHEET, sheetId, service)
-    r = enter_row(RMT_STATS_SHEET, sheetId, 1, OVERALL_STATS, service)
+    r = enter_rows(RMT_STATS_SHEET, sheetId, 1, [OVERALL_STATS], service)
     r = format_player_stat_sheet(RMT_STATS_SHEET, sheetId, service)
-    r = enter_row(RMT_STATS_SHEET, sheetId, 2, ["Homework 4/5 thru 4/12"], service)
+    epoch = date_to_epoch(int(start_date[0]), int(start_date[2:]), 2018)
+    to_write = [["Stats since " + start_date]]
     for i in range(len(TEAM_MEMBER_NAMES)):
         print("Getting stats on " + TEAM_MEMBER_NAMES[i])
         sys.stdout.flush()
-        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], date_to_epoch(4,5,2018), date_to_epoch(), None, TEAM_MEMBER_ROLES[i])
+        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
         stats["Player"] = TEAM_MEMBER_NAMES[i]
-        to_write = [stats[key] for key in OVERALL_STATS]
-        r = enter_row(RMT_STATS_SHEET, sheetId, i+3, to_write, service)
-        print("Writing stats on " + TEAM_MEMBER_NAMES[i])
-        sys.stdout.flush()
+        to_write.append([stats[key] for key in OVERALL_STATS])
     print("Writing time")
-    to_write = ["Last updated", str(datetime.date.today())]
-    r4 = enter_row(RMT_STATS_SHEET, sheetId, len(TEAM_MEMBER_NAMES)+3, to_write, service)
+    to_write.append(["Last updated", str(datetime.date.today())])
+    r4 = enter_rows(RMT_STATS_SHEET, sheetId, 2, to_write, service)
+
+    sheetId="Total Player Stats"
+    if not get_numeric_sheetId(RMT_STATS_SHEET, sheetId, service):
+        create_sheet(RMT_STATS_SHEET, sheetId, service)
+    r = enter_rows(RMT_STATS_SHEET, sheetId, 1, [OVERALL_STATS], service)
+    r = format_player_stat_sheet(RMT_STATS_SHEET, sheetId, service)
+    start_date = "4/1"
+    epoch = date_to_epoch(int(start_date[0]), int(start_date[2:]), 2018)
+    to_write = []
+    for i in range(len(TEAM_MEMBER_NAMES)):
+        print("Getting stats on " + TEAM_MEMBER_NAMES[i])
+        sys.stdout.flush()
+        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
+        stats["Player"] = TEAM_MEMBER_NAMES[i]
+        to_write.append([stats[key] for key in OVERALL_STATS])
+    print("Writing time")
+    to_write.append([])
+    to_write.append(["Stats since 4/1"])
+    to_write.append(["Last updated", str(datetime.date.today())])
+    r4 = enter_rows(RMT_STATS_SHEET, sheetId, 2, to_write, service)
 
 
 if __name__ == "__main__":
-    update_rmt_stats()
+    update_rmt_stats("4/26")
     # service = credential_service_setup()
     # sheetId="Champion Stats Test"
     # if not get_numeric_sheetId(STATS_TESTING_SHEET, sheetId, service):

@@ -134,3 +134,9 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		print(r.json())
 		return r
 	return r.json()
+
+if __name__ == '__main__':
+	with open("output.txt","w") as f:
+		for match in get_match_history(get_account_id("Gezang"))["matches"]:
+			f.write(str(match["gameId"]))
+			f.write("\n")

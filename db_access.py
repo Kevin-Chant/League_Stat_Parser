@@ -22,5 +22,6 @@ def create_test_table_query():
 	query += "PRIMARY KEY(PlayerId, MatchID, TeamID));"
 	return query
 
-cursor.execute(create_test_table_query())
-db.close()
+# cursor.execute(create_test_table_query())
+
+# db.close()
