@@ -1,30 +1,10 @@
-from collections import OrderedDict
-from riot_api_access import *
+import riot_api_access as riot
 from helpers import *
 
 PLAYER_STATS_SPREADSHEET_ID = "1fu8T513ZZhWDn0Fimc01evXSW6lwxUJI49gHq_BUow8"
 RMT_STATS_SHEET = "1haqC4FS0pY2bVe9agDLDi5KtMvk4hzRlcl9RvI-We4s"
 STATS_TESTING_SHEET = "1MLtNlYn7TN-ef0f75zzWmTtO2sHEsKNv41D4dNU9awg"
 CUSTOM_TEAM_BG_COLOR = {"red": "183", "green": "225", "blue": "205"}
-
-# PLAYER_STATS_KEY_HIERARCHY = OrderedDict([  ("Combat Stats", ["Kills", "Deaths", "Assists", "KDA", "Kill Participation", "Kill Share", "Team Kills", "Enemy Kills", "Death Share", "Largest MultiKill", "Longest Killing Spree"]),
-#                                             ("Damage Stats", ["Objective Damage", "Turret Damage", "Total CC duration", "Dmg taken per min by min", "Dmg taken diff per min by min", "Heals Given", "Damage type breakdown"]),
-#                                             ("Vision Stats", OrderedDict([  ("Player", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-#                                                                             ("Opponent", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-#                                                                             ("Absolute Difference", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"]),
-#                                                                             ("Relative Score", ["Wards placed", "Control wards purchased", "Wards killed", "Vision score"])
-#                                                     ])
-#                                             ),
-#                                             ("CS stats", ["Total CS", "CS per min", "CS per min by min", "CS differential", "CS differential by min"])
-#                                 ])
-# #TODO: fix damage breakdown hierarchy
-# m = load_json("example_match.json")
-# p_id = get_partic_id_from_name(m, "Gezang")
-# stats = get_all_player_stats(m, p_id)
-# PLAYER_STATS_COL_TITLES = list(stats)
-# PLAYER_STATS_COL_TITLES.sort()
-# PLAYER_STATS_COL_TITLES.remove("Player")
-# PLAYER_STATS_COL_TITLES.insert(0, "Player")
 
 
 def combine_players(x,y):
@@ -145,5 +125,5 @@ STAT_CALCULATION_METHODS = {"Presence": lambda stats: stats["Num Games"] + stats
 							}
 
 
-TEAM_MEMBER_NAMES = ["Däddy Kun", "Shrek Wazowski", "Kadorr", "Rosin", "Feãr", "Áz1r", "AlaneGod93", "sallaD", "Gezang"]
-TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]
+TEAM_MEMBER_NAMES = ["Däddy Kun", "Shrek Wazowski", "Kadorr", "BigBrainTim", "Rosin", "Feãr", "Áz1r", "sallaD", "Gezang"]
+TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("JUNGLE", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]

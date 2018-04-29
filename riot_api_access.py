@@ -10,100 +10,129 @@ def read_api_key():
 	return keyfile.readlines()[0].strip()
 
 def get_champion_id_dict(SECRET_API_KEY=None):
-	if not SECRET_API_KEY:
-		SECRET_API_KEY = read_api_key()
-	url = BASE + "/lol/static-data/v3/champions?locale=en_US&dataById=true"
-	headers = {"X-Riot-Token": SECRET_API_KEY}
-	r = requests.get(url,headers=headers)
-	if r.status_code == 429:
-		t = r.json()["Retry-After"]
-		print("Waiting " + str(t) + " seconds and trying again")
-		print("Full response:")
-		print(r.json())
-		time.sleep(t)
-		return get_match_from_id(matchid, SECRET_API_KEY)
-	if r.status_code != 200:
-		print("Get champion id dict failed")
-		return r
-	dct = {}
-	data = r.json()["data"]
-	for champ_id in data:
-		dct[champ_id] = data[champ_id]["name"]
-	return dct
+	dct = load_json(".cache/champ_ids.json")
+	if not dct or time.time() > dct["expiry_time"]:
+		if not SECRET_API_KEY:
+			SECRET_API_KEY = read_api_key()
+		url = BASE + "/lol/static-data/v3/champions?locale=en_US&dataById=true"
+		headers = {"X-Riot-Token": SECRET_API_KEY}
+		r = requests.get(url,headers=headers)
+		if r.status_code == 429:
+			print(r.json())
+			t = r.json()["Retry-After"]
+			print("Waiting " + str(t) + " seconds and trying again")
+			print("Full response:")
+			print(r.json())
+			time.sleep(t)
+			return get_match_from_id(matchid, SECRET_API_KEY)
+		if r.status_code != 200:
+			print("Get champion id dict failed")
+			return r
+		dct = {}
+		data = r.json()["data"]
+		for champ_id in data:
+			dct[champ_id] = data[champ_id]["name"]
+		dct["expiry_time"] = time.time() + 60*60*24*30 # Expires after one month
+	    if not store_json(dct, ".cache/champ_ids.json", True):
+	        return None
+		return dct
+	else:
+		return dct
 
 def get_account_id(summoner_name, SECRET_API_KEY=None):
-	if not SECRET_API_KEY:
-		SECRET_API_KEY = read_api_key()
-	if not summoner_name:
-		raise TypeError("Summoner name cannot be None")
-	if not isinstance(summoner_name, str):
-		raise TypeError("Summoner name must be a string")
-	url = BASE + "/lol/summoner/v3/summoners/by-name/" + summoner_name
-	headers = {"X-Riot-Token": SECRET_API_KEY}
-	r = requests.get(url, headers=headers)
-	if r.status_code == 429:
-		t = r.json()["Retry-After"]
-		print("Waiting " + str(t) + " seconds and trying again")
-		print("Full response:")
-		print(r.json())
-		time.sleep(t)
-		return get_match_from_id(matchid, SECRET_API_KEY)
-	if r.status_code != 200:
-		print("Get account id failed")
-		return r
-	response = r.json()
-	if "name" not in response:
-		print("No such name exists")
-		return response
-	return response["accountId"]
+	dct = load_json(".cache/summoners/" + summoner_name + ".json")
+	if not dct or time.time() > dct["expiry_time"]:
+		if not SECRET_API_KEY:
+			SECRET_API_KEY = read_api_key()
+		if not summoner_name:
+			raise TypeError("Summoner name cannot be None")
+		if not isinstance(summoner_name, str):
+			raise TypeError("Summoner name must be a string")
+		url = BASE + "/lol/summoner/v3/summoners/by-name/" + summoner_name
+		headers = {"X-Riot-Token": SECRET_API_KEY}
+		r = requests.get(url, headers=headers)
+		if r.status_code == 429:
+			print(r.json())
+			t = r.json()["Retry-After"]
+			print("Waiting " + str(t) + " seconds and trying again")
+			print("Full response:")
+			print(r.json())
+			time.sleep(t)
+			return get_match_from_id(matchid, SECRET_API_KEY)
+		if r.status_code != 200:
+			print("Get account id failed")
+			return r
+		response = r.json()
+		response["expiry_time"] = time.time() + 60*60*24*30 # Expires after one month
+		store_json(response, ".cache/summoners/" + summoner_name + ".json", True)
+		return response["accountId"]
+	else:
+		return dct["accountId"]
 
 def get_recent_history(accountid, SECRET_API_KEY=None):
-	if not SECRET_API_KEY:
-		SECRET_API_KEY = read_api_key()
-	if not accountid:
-		raise TypeError("Account id cannot be None")
-	if not isinstance(accountid, int):
-		raise TypeError("Account id must be an int")
-	url = BASE + "/lol/match/v3/matchlists/by-account/" + str(accountid) +  "/recent"
-	headers = {"X-Riot-Token": SECRET_API_KEY}
-	r = requests.get(url, headers=headers)
-	if r.status_code == 429:
-		t = r.json()["Retry-After"]
-		print("Waiting " + str(t) + " seconds and trying again")
-		print("Full response:")
-		print(r.json())
-		time.sleep(t)
-		return get_match_from_id(matchid, SECRET_API_KEY)
-	if r.status_code != 200:
-		print("Get match history failed")
-		return r
-	response = r.json()
-	if "matches" not in response:
-		print("Idk what happened but theres no match history")
-		return response
-	return response["matches"]
+	hist = load_json(".cache/recent_histories/" + str(accountid) + ".json")
+	if not hist or time.time() > hist["expiry_time"]:
+		if not SECRET_API_KEY:
+			SECRET_API_KEY = read_api_key()
+		if not accountid:
+			raise TypeError("Account id cannot be None")
+		if not isinstance(accountid, int):
+			raise TypeError("Account id must be an int")
+		url = BASE + "/lol/match/v3/matchlists/by-account/" + str(accountid) +  "/recent"
+		headers = {"X-Riot-Token": SECRET_API_KEY}
+		r = requests.get(url, headers=headers)
+		if r.status_code == 429:
+			print(r.json())
+			t = r.json()["Retry-After"]
+			print("Waiting " + str(t) + " seconds and trying again")
+			print("Full response:")
+			print(r.json())
+			time.sleep(t)
+			return get_match_from_id(matchid, SECRET_API_KEY)
+		if r.status_code != 200:
+			print("Get match history failed")
+			return r
+		response = r.json()
+		if "matches" not in response:
+			print("There is no recent match history")
+			return []
+		hist = {"expiry_time": time.time() * 60*60*2,
+				"matches": response["matches"]
+				}
+		store_json(hist, ".cache/recent_histories/" + str(accountid) + ".json",True) # Expires after 2 hours
+		return hist["matches"]
+	else:
+		return hist["matches"]
 
 def get_match_from_id(matchid, SECRET_API_KEY=None):
-	if not SECRET_API_KEY:
-		SECRET_API_KEY = read_api_key()
-	if not matchid:
-		raise TypeError("Match id cannot be None")
-	if not isinstance(matchid, int):
-		raise TypeError("Match id must be an int")
-	url = BASE + "/lol/match/v3/matches/" + str(matchid)
-	headers = {"X-Riot-Token": SECRET_API_KEY}
-	r = requests.get(url, headers=headers)
-	if r.status_code == 429:
-		t = r.json()["Retry-After"]
-		print("Waiting " + str(t) + " seconds and trying again")
-		print("Full response:")
-		print(r.json())
-		time.sleep(t)
-		return get_match_from_id(matchid, SECRET_API_KEY)
-	if r.status_code != 200:
-		print("Get match object failed")
-		return r
-	return r.json()
+    match = load_json(".match_cache/" + str(match_id) + ".json")
+    if not match:
+		if not SECRET_API_KEY:
+			SECRET_API_KEY = read_api_key()
+		if not matchid:
+			raise TypeError("Match id cannot be None")
+		if not isinstance(matchid, int):
+			raise TypeError("Match id must be an int")
+		url = BASE + "/lol/match/v3/matches/" + str(matchid)
+		headers = {"X-Riot-Token": SECRET_API_KEY}
+		r = requests.get(url, headers=headers)
+		if r.status_code == 429:
+			print("\n"*5)
+			print(r.json())
+			print("\n"*5)
+			t = r.json()["Retry-After"]
+			print("Waiting " + str(t) + " seconds and trying again")
+			print("Full response:")
+			print(r.json())
+			time.sleep(t)
+			return get_match_from_id(matchid, SECRET_API_KEY)
+		if r.status_code != 200:
+			print("Get match object failed")
+			return r
+		store_json(match, ".match_cache/" + str(match_id) + ".json", True)
+		return r.json()
+	else:
+		return match
 
 def get_match_history(accountid, beginTime=None, endTime=None, champions=None, SECRET_API_KEY=None):
 	if not SECRET_API_KEY:
@@ -120,6 +149,7 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		params["champion"] = champions
 	r = requests.get(url, headers=headers, params=params)
 	if r.status_code == 429:
+		print(r.json())
 		t = r.json()["Retry-After"]
 		print("Waiting " + str(t) + " seconds and trying again")
 		print("Full response:")
@@ -134,9 +164,3 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		print(r.json())
 		return r
 	return r.json()
-
-if __name__ == '__main__':
-	with open("output.txt","w") as f:
-		for match in get_match_history(get_account_id("Gezang"))["matches"]:
-			f.write(str(match["gameId"]))
-			f.write("\n")
