@@ -10,7 +10,8 @@ def store_json(json_obj, filename, force=False):
         return False
     if not isinstance(json_obj, dict):
         print("Must be given a valid dictionary to store")
-        return False
+        raise ValueError()
+        # return False
     with open(filename, 'w') as fp:
         json.dump(json_obj, fp)
         return True

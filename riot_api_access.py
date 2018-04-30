@@ -1,7 +1,7 @@
 import requests
 import sys
 import time
-from helpers import *
+import helpers
 BASE = "https://na1.api.riotgames.com"
 QUEUES = [400, 420, 430, 440]
 
@@ -10,7 +10,7 @@ def read_api_key():
 	return keyfile.readlines()[0].strip()
 
 def get_champion_id_dict(SECRET_API_KEY=None):
-	dct = load_json(".cache/champ_ids.json")
+	dct = helpers.load_json(".cache/champ_ids.json")
 	if not dct or time.time() > dct["expiry_time"]:
 		if not SECRET_API_KEY:
 			SECRET_API_KEY = read_api_key()
@@ -33,14 +33,14 @@ def get_champion_id_dict(SECRET_API_KEY=None):
 		for champ_id in data:
 			dct[champ_id] = data[champ_id]["name"]
 		dct["expiry_time"] = time.time() + 60*60*24*30 # Expires after one month
-	    if not store_json(dct, ".cache/champ_ids.json", True):
-	        return None
+		if not helpers.store_json(dct, ".cache/champ_ids.json", True):
+			return None
 		return dct
 	else:
 		return dct
 
 def get_account_id(summoner_name, SECRET_API_KEY=None):
-	dct = load_json(".cache/summoners/" + summoner_name + ".json")
+	dct = helpers.load_json(".cache/summoners/" + summoner_name + ".json")
 	if not dct or time.time() > dct["expiry_time"]:
 		if not SECRET_API_KEY:
 			SECRET_API_KEY = read_api_key()
@@ -64,13 +64,13 @@ def get_account_id(summoner_name, SECRET_API_KEY=None):
 			return r
 		response = r.json()
 		response["expiry_time"] = time.time() + 60*60*24*30 # Expires after one month
-		store_json(response, ".cache/summoners/" + summoner_name + ".json", True)
+		helpers.store_json(response, ".cache/summoners/" + summoner_name + ".json", True)
 		return response["accountId"]
 	else:
 		return dct["accountId"]
 
 def get_recent_history(accountid, SECRET_API_KEY=None):
-	hist = load_json(".cache/recent_histories/" + str(accountid) + ".json")
+	hist = helpers.load_json(".cache/recent_histories/" + str(accountid) + ".json")
 	if not hist or time.time() > hist["expiry_time"]:
 		if not SECRET_API_KEY:
 			SECRET_API_KEY = read_api_key()
@@ -99,14 +99,14 @@ def get_recent_history(accountid, SECRET_API_KEY=None):
 		hist = {"expiry_time": time.time() * 60*60*2,
 				"matches": response["matches"]
 				}
-		store_json(hist, ".cache/recent_histories/" + str(accountid) + ".json",True) # Expires after 2 hours
+		helpers.store_json(hist, ".cache/recent_histories/" + str(accountid) + ".json",True) # Expires after 2 hours
 		return hist["matches"]
 	else:
 		return hist["matches"]
 
 def get_match_from_id(matchid, SECRET_API_KEY=None):
-    match = load_json(".match_cache/" + str(match_id) + ".json")
-    if not match:
+	match = helpers.load_json(".match_cache/" + str(matchid) + ".json")
+	if not match:
 		if not SECRET_API_KEY:
 			SECRET_API_KEY = read_api_key()
 		if not matchid:
@@ -129,8 +129,9 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 		if r.status_code != 200:
 			print("Get match object failed")
 			return r
-		store_json(match, ".match_cache/" + str(match_id) + ".json", True)
-		return r.json()
+		match = r.json()
+		helpers.store_json(match, ".match_cache/" + str(matchid) + ".json", True)
+		return match
 	else:
 		return match
 
