@@ -1,12 +1,13 @@
 from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messagebox, END
 import pyperclip
 from tournament import load_tournament_key, tournament_codes
+from db_access import upload_tcodes
 from os.path import isfile
 
 tournament_ids = {  "Rampage_4": 393536,
-                    "Dominate_4": None,
-                    "Alumnus_4": None,
-                    "Champion's_4": None}
+                    "Dominate_4": 393545,
+                    "Alumnus_4": 393546,
+                    "Champions_4": 393547}
 
 SEASON = 4
 
@@ -44,7 +45,7 @@ class MatchDialog(simpledialog.Dialog):
         self.league.set("Rampage") # initial value
         if self.leagueval:
             self.league.set(self.leagueval)
-        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champion's")
+        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
 
         self.bo = StringVar(master)
         self.bo.set("3") # initial value
@@ -80,9 +81,20 @@ def setup_flow(parent):
                 f.write(tkey)
                 f.close()
 
+    if not isfile("db_pass.txt"):
+        db_pass = simpledialog.askstring("Input", "Please enter the database password", parent=parent)
+        if not db_pass:
+            messagebox.showwarning("Warning", "Password not entered, exiting program.")
+            exit(0)
+        localsave = messagebox.askyesno("Question", "Do you want this program to save the database password locally? If you choose yes, take special care not to give db_pass.txt to anyone.")
+        if localsave:
+            with open("db_pass.txt", "w") as f:
+                f.write(db_pass)
+                f.close()
+
 def get_tcodes(bteam, rteam, week, league, bo):
-    metadata = {"league": league,
-                "season": SEASON,
+    metadata = {"League": league,
+                "Season": SEASON,
                 "Team1": bteam,
                 "Team2": rteam,
                 "Week": week
@@ -91,6 +103,10 @@ def get_tcodes(bteam, rteam, week, league, bo):
     if tid:
         codes = tournament_codes(tid, bo, metadata)
         if codes:
+            try:
+                upload_tcodes(metadata, codes)
+            except:
+                messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
             return codes
     else:
         messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(SEASON) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
@@ -125,13 +141,11 @@ def main():
     while not done:
         if not d.result:
             exit(0)
-        ne = error_check(root, *d.result)
-        print(d.result)
-        if ne > 0:
+        num_errs = error_check(root, *d.result)
+        if num_errs > 0:
             d = MatchDialog(root, *d.result)
             continue
         codes = get_tcodes(*d.result)
-        print(codes)
         formatted_codes = "\n".join([str(code) for code in codes])
         pyperclip.copy(formatted_codes)
         messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
