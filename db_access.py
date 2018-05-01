@@ -1,4 +1,5 @@
 import pymysql
+from os.path import isfile
 IP = "50.62.176.249"
 DB_USER = "StatisticsTeam"
 SCHEMA_DB = "information_schema"
@@ -6,8 +7,9 @@ WEBSITE_DB = "RisenWebsite"
 TABLES = ["LeagueTypes", "Leagues", "Players", "Teams", "Testing", "TournamentCodes", "Tcodetesting"]
 
 def load_db_password():
-	with open("db_pass.txt") as f:
-		return f.readlines()[0].strip()
+	if isfile("db_pass.txt"):
+		with open("db_pass.txt") as f:
+			return f.readlines()[0].strip()
 
 
 # General format:
@@ -44,8 +46,8 @@ def upload_tcodes(metadata, codes):
 	db.close()
 
 
-db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
-cursor = db.cursor()
-cursor.execute("SELECT * FROM Tcodetesting")
-print(cursor.fetchall())
-db.close()
+# db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
+# cursor = db.cursor()
+# cursor.execute("SELECT * FROM Tcodetesting")
+# print(cursor.fetchall())
+# db.close()
