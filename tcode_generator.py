@@ -105,8 +105,9 @@ def get_tcodes(bteam, rteam, week, league, bo):
         if codes:
             try:
                 upload_tcodes(metadata, codes)
-            except:
+            except Exception as e:
                 messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
+                messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
             return codes
     else:
         messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(SEASON) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
