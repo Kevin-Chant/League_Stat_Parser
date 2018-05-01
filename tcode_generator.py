@@ -1,5 +1,14 @@
 from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messagebox, END
 import pyperclip
+from tournament import load_tournament_key, tournament_codes
+from os.path import isfile
+
+tournament_ids = {  "Rampage_4": 393536,
+                    "Dominate_4": None,
+                    "Alumnus_4": None,
+                    "Champion's_4": None}
+
+SEASON = 4
 
 class MatchDialog(simpledialog.Dialog):
 
@@ -35,7 +44,7 @@ class MatchDialog(simpledialog.Dialog):
         self.league.set("Rampage") # initial value
         if self.leagueval:
             self.league.set(self.leagueval)
-        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champion's League")
+        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champion's")
 
         self.bo = StringVar(master)
         self.bo.set("3") # initial value
@@ -59,8 +68,33 @@ class MatchDialog(simpledialog.Dialog):
 
         self.result = (bteam,rteam,week,league,bo)
 
+def setup_flow(parent):
+    if not isfile("tournament_key.txt"):
+        tkey = simpledialog.askstring("Input", "Please enter the tournament API key", parent=parent)
+        if not tkey:
+            messagebox.showwarning("Warning", "Tournament API key not entered, exiting program.")
+            exit(0)
+        localsave = messagebox.askyesno("Question", "Do you want this program to save the tournament API key locally? If you choose yes, take special care not to give tournament_key.txt to anyone.") 
+        if localsave:
+            with open("tournament_key.txt", "w") as f:
+                f.write(tkey)
+                f.close()
+
 def get_tcodes(bteam, rteam, week, league, bo):
-    return [1,2,3]
+    metadata = {"league": league,
+                "season": SEASON,
+                "Team1": bteam,
+                "Team2": rteam,
+                "Week": week
+                }
+    tid = tournament_ids[league + "_" + str(SEASON)]
+    if tid:
+        codes = tournament_codes(tid, bo, metadata)
+        if codes:
+            return codes
+    else:
+        messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(SEASON) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
+        exit(0)
 
 def error_check(root, bteam, rteam, week, league, bo):
     numerrors = 0
@@ -81,22 +115,27 @@ def error_check(root, bteam, rteam, week, league, bo):
     return numerrors
 
 
+def main():
+    root = Tk()
+    root.winfo_toplevel().title("Tournament Code Generator")
+    root.withdraw()
+    setup_flow(root)
+    done = False
+    d = MatchDialog(root)
+    while not done:
+        if not d.result:
+            exit(0)
+        ne = error_check(root, *d.result)
+        print(d.result)
+        if ne > 0:
+            d = MatchDialog(root, *d.result)
+            continue
+        codes = get_tcodes(*d.result)
+        print(codes)
+        formatted_codes = "\n".join([str(code) for code in codes])
+        pyperclip.copy(formatted_codes)
+        messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
+        done = True
 
-done = False
-root = Tk()
-root.withdraw()
-d = MatchDialog(root)
-while not done:
-    if not d.result:
-        exit(0)
-    ne = error_check(root, *d.result)
-    print(d.result)
-    if ne > 0:
-        d = MatchDialog(root, *d.result)
-        continue
-    codes = get_tcodes(*d.result)
-    print(codes)
-    formatted_codes = "\n".join([str(code) for code in codes])
-    pyperclip.copy(formatted_codes)
-    messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
-    done = True
+if __name__ == '__main__':
+    main()

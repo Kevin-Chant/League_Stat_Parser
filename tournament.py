@@ -1,5 +1,7 @@
 import requests
+import json
 BASE = "https://americas.api.riotgames.com"
+RISEN_PROVIDER_ID = 1583
 
 def load_tournament_key():
 	keyfile = open("tournament_key.txt")
@@ -17,36 +19,35 @@ def provider():
 	r = requests.post(url, headers=headers, json=body)
 	return r
 
-pid = 1567
-
-def tournament():
+def tournament(league, season):
 	endpoint = "/lol/tournament/v3/tournaments"
 	api_key = load_tournament_key()
-	tparams= {"name": "Risen Test Tournament",
-  	"providerId": pid
-	}
+	tparams= {	"name": "Risen " + league + " Season " + str(season),
+				"providerId": RISEN_PROVIDER_ID
+					}
 	headers = {"X-Riot-Token": api_key}
-	body={"TournamentRegistrationParameters": tparams}
 	url = BASE + endpoint
 	r = requests.post(url, headers=headers, json=tparams)
-	return r
+	return r.json()
 
-def mock_tournament_codes(tid, allowed_sids=None, numcodes=None):
-	endpoint = "/lol/tournament-stub/v3/codes"
+def tournament_codes(tid, count, metadata={}, allowed_sids=None):
+	endpoint = "/lol/tournament/v3/codes" + "?tournamentId=" + str(tid) + "&count=" + str(count)
 	tcodeparams = {	"mapType":"SUMMONERS_RIFT",
 					"pickType":"TOURNAMENT_DRAFT",
 					"spectatorType":"ALL",
-					"teamSize":5
+					"teamSize":5,
+					"metadata": json.dumps(metadata)
 					}
 	if allowed_sids:
 		tcodeparams["allowedSummonerIds"] = allowed_sids
 	api_key = load_tournament_key()
-	headers = { "X-Riot-Token": api_key,
-				"tournamentId": tid,
-				}
-	body = {"TournamentCodeParameters": tcodeparams}
-	r = requests.post(url, headers=headers, json=body)
-	return r
+	headers = {"X-Riot-Token": api_key}
+	url = BASE + endpoint
+	r = requests.post(url, headers=headers, json=tcodeparams)
+	if r.status_code != 200:
+		print(r.json())
+		return None
+	return r.json()
 
 def get_tournament_match(mid, tcode):
 	endpoint = "/lol/tournament/v3/matches/" + str(mid) + "/by-tournament-code/"+str(tcode)
