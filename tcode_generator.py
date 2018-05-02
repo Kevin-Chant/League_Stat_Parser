@@ -115,11 +115,11 @@ def get_tcodes(bteam, rteam, week, league, bo):
 
 def error_check(root, bteam, rteam, week, league, bo):
     numerrors = 0
-    if not len(bteam) in [2,3]:
-        messagebox.showerror("Error", "The blue team should be the 2 or 3 letter team acronym.")
+    if not len(bteam) in [1,2,3]:
+        messagebox.showerror("Error", "The blue team should be the 1-3 letter team acronym.")
         numerrors += 1
-    if not len(rteam) in [2,3]:
-        messagebox.showerror("Error", "The red team should be the 2 or 3 letter team acronym.")
+    if not len(rteam) in [1,2,3]:
+        messagebox.showerror("Error", "The red team should be the 1-3 letter team acronym.")
         numerrors += 1
     try:
         w = int(week)
