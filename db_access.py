@@ -44,10 +44,3 @@ def upload_tcodes(metadata, codes):
 	cursor = db.cursor()
 	cursor.execute("INSERT INTO TournamentCodes (League, Season, Week, Team1, Team2, code1, code2, code3) VALUES (" + ",".join(values) + ");")
 	db.close()
-
-
-# db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
-# cursor = db.cursor()
-# cursor.execute("SELECT * FROM Tcodetesting")
-# print(cursor.fetchall())
-# db.close()
