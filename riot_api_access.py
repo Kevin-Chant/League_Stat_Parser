@@ -120,7 +120,10 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 			print("\n"*5)
 			print(r.json())
 			print("\n"*5)
-			t = r.json()["Retry-After"]
+			try:
+				t = r.json()["Retry-After"]
+			except:
+				t = 60
 			print("Waiting " + str(t) + " seconds and trying again")
 			print("Full response:")
 			print(r.json())

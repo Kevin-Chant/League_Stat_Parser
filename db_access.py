@@ -44,3 +44,24 @@ def upload_tcodes(metadata, codes):
 	cursor = db.cursor()
 	cursor.execute("INSERT INTO TournamentCodes (League, Season, Week, Team1, Team2, code1, code2, code3) VALUES (" + ",".join(values) + ");")
 	db.close()
+
+def get_tcodes(league, week, team=None):
+	rtn_str = "Week " + str(week) + ":\n"
+	db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
+	cursor = db.cursor()
+	query = "SELECT * FROM TournamentCodes WHERE League = '{!s}'".format(league)
+	query += " AND Week = {!s}".format(str(week))
+	if team:
+		query += " AND (Team1 = '{!s}' OR Team2 = '{!s}')".format(team,team)
+	cursor.execute(query)
+	vals = cursor.fetchall()
+	db.close()
+	for val in vals:
+		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7])
+	return rtn_str
+
+def main():
+	print(get_tcodes("Rampage", 1, team="5T"))
+
+if __name__ == '__main__':
+	main()
