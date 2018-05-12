@@ -2,6 +2,7 @@ import requests
 import sys
 import time
 import helpers
+import os
 BASE = "https://na1.api.riotgames.com"
 QUEUES = [400, 420, 430, 440]
 
@@ -123,10 +124,11 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 			try:
 				t = r.json()["Retry-After"]
 			except:
-				t = 60
+				t = 180
 			print("Waiting " + str(t) + " seconds and trying again")
 			print("Full response:")
 			print(r.json())
+			os.stdout.flush()
 			time.sleep(t)
 			return get_match_from_id(matchid, SECRET_API_KEY)
 		if r.status_code != 200:
