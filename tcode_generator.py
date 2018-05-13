@@ -1,15 +1,146 @@
-from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messagebox, END
+from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messagebox, END, Button
+from tkinter import *
 import pyperclip
 from tournament import load_tournament_key, tournament_codes
 from db_access import upload_tcodes
 from os.path import isfile
+import json
 
 tournament_ids = {  "Rampage_4": 393536,
                     "Dominate_4": 393545,
                     "Alumnus_4": 393546,
                     "Champions_4": 393547}
 
-SEASON = 4
+VERSION = "0.9"
+CONFIG_KEYS = ["Season", "League", "Autoupdate"]
+
+class ConfigInfo(simpledialog.Dialog):
+    def __init__(self, parent, config):
+        self.prev_config = config
+        super(ConfigInfo, self).__init__(parent)
+
+
+    def body(self, parent):
+
+        self.season_entry = Entry(parent)
+        self.season_entry.insert(END, self.prev_config["Season"])
+
+        self.league = StringVar(parent)
+        self.league.set(self.prev_config["League"])
+        league_dropdown = OptionMenu(parent, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+        
+        self.autoupdate = BooleanVar()
+        self.autoupdate.set(self.prev_config["Autoupdate"])
+        autoupdate_checkbox = Checkbutton(parent, text="", variable=self.autoupdate)
+
+        Label(parent, text="Season").grid(row=0,column=0)
+        self.season_entry.grid(row=0,column=1)
+
+        Label(parent, text="League").grid(row=1,column=0)
+        league_dropdown.grid(row=1,column=1)
+
+        Label(parent, text="Autoupdate").grid(row=2,column=0)
+        autoupdate_checkbox.grid(row=2,column=1)
+
+    def apply(self):
+        season = self.season_entry.get()
+        try:
+            s = int(season)
+            if s < 4:
+                messagebox.showerror("Error", "Cannot have season before 4")
+                return
+        except:
+            messagebox.showerror("Error", "Season must be a number")
+            return
+        new_config = {  "Season": int(season),
+                        "League": self.league.get(),
+                        "Autoupdate": self.autoupdate.get()
+                        }
+        if new_config != self.prev_config:
+            if messagebox.askyesno("Save Changes?", "You have made changes, save new config?"):
+                self.result = new_config
+            else:
+                self.result = None
+        else:
+            self.result = None
+
+def generate_default_config():
+    return {"Season": 4, "League": "Rampage", "Autoupdate": False}
+
+def load_config():
+    try:
+        config_file = open("config.json", "r")
+        config = json.load(config_file)
+    except:
+        config_file = open("config.json", "w")
+        config = generate_default_config()
+        json.dump(config, config_file)
+    return config
+
+def store_config(config):
+    config_file = open("config.json", "w")
+    json.dump(config, config_file)
+
+class MenuDialog(simpledialog.Dialog):
+
+    def body(self, parent):
+        self.multiCodeButton = Button(parent, text="Generate Weekly Codes", command=self.weekly_code_flow)
+        self.singleCodeButton = Button(parent, text="Generate Single Code", command=self.single_code_flow)
+
+        self.configButton = Button(parent, text="Configure Settings and Keys", command=self.config_flow)
+        self.updateButton = Button(parent, text="Self Update (coming soon)", command=self.update_flow)
+
+        self.multiCodeButton.grid(row=0,column=0)
+        self.singleCodeButton.grid(row=0,column=1)
+
+        self.configButton.grid(row=1,column=0)
+        self.updateButton.grid(row=1,column=1)
+    
+    def apply(self):
+        self.result = None
+
+    def config_flow(self, event=None):
+        config = load_config()
+        i = ConfigInfo(self.parent, config)
+        if i.result:
+            store_config(i.result)
+
+    def weekly_code_flow(self, event=None):
+        config = load_config()
+        d = MatchDialog(self, league=config["League"])
+        while True:
+            if not d.result:
+                return
+            num_errs = error_check(self, *d.result)
+            if num_errs > 0:
+                d = MatchDialog(self, *d.result)
+                continue
+            codes = get_tcodes(*d.result)
+            formatted_codes = "\n".join([str(code) for code in codes])
+            pyperclip.copy(formatted_codes)
+            messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
+            d = MatchDialog(self)
+
+    def single_code_flow(self, event=None):
+        config = load_config()
+        d = MatchDialog(self, league=config["League"], bestof=1)
+        while True:
+            if not d.result:
+                return
+            num_errs = error_check(self, *d.result)
+            if num_errs > 0:
+                d = MatchDialog(self, *d.result)
+                continue
+            codes = get_tcodes(*d.result)
+            formatted_codes = "\n".join([str(code) for code in codes])
+            pyperclip.copy(formatted_codes)
+            messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
+            d = MatchDialog(self)
+
+    def update_flow(self, event=None):
+        print("Update triggered")
+        pass
+
 
 class MatchDialog(simpledialog.Dialog):
 
@@ -47,11 +178,11 @@ class MatchDialog(simpledialog.Dialog):
             self.league.set(self.leagueval)
         league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
 
-        self.bo = StringVar(master)
-        self.bo.set("3") # initial value
+        self.bo = IntVar(master)
+        self.bo.set(3) # initial value
         if self.boval:
             self.bo.set(self.boval)
-        bo_dropdown = OptionMenu(master, self.bo, "3", "5")
+        bo_dropdown = OptionMenu(master, self.bo, 1, 3, 5)            
 
         self.bteam.grid(row=0, column=1)
         self.rteam.grid(row=0, column=3)
@@ -93,24 +224,36 @@ def setup_flow(parent):
                 f.close()
 
 def get_tcodes(bteam, rteam, week, league, bo):
+    season = load_config()["Season"]
     metadata = {"League": league,
-                "Season": SEASON,
+                "Season": season,
                 "Team1": bteam,
                 "Team2": rteam,
                 "Week": week
                 }
-    tid = tournament_ids[league + "_" + str(SEASON)]
+    g2_metadata = { "League": league,
+                    "Season": season,
+                    "Team1": rteam,
+                    "Team2": bteam,
+                    "Week": week
+                    }
+    tid = tournament_ids[league + "_" + str(season)]
     if tid:
-        codes = tournament_codes(tid, bo, metadata)
-        if codes:
-            try:
-                upload_tcodes(metadata, codes)
-            except Exception as e:
-                messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
-                messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
-            return codes
+        codes = []
+        for i in range(bo):
+            if i % 2 == 0:
+                code = tournament_codes(tid, 1, metadata)[0]
+            else:
+                code = tournament_codes(tid, 1, g2_metadata)[0]
+            codes.append(code)
+        try:
+            upload_tcodes(metadata, codes)
+        except Exception as e:
+            messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
+            messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
+        return codes
     else:
-        messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(SEASON) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
+        messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(season) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
         exit(0)
 
 def error_check(root, bteam, rteam, week, league, bo):
@@ -134,23 +277,10 @@ def error_check(root, bteam, rteam, week, league, bo):
 
 def main():
     root = Tk()
-    root.winfo_toplevel().title("Tournament Code Generator")
+    root.winfo_toplevel().title("Tournament Code Generator V " + str(VERSION))
     root.withdraw()
     setup_flow(root)
-    done = False
-    d = MatchDialog(root)
-    while not done:
-        if not d.result:
-            exit(0)
-        num_errs = error_check(root, *d.result)
-        if num_errs > 0:
-            d = MatchDialog(root, *d.result)
-            continue
-        codes = get_tcodes(*d.result)
-        formatted_codes = "\n".join([str(code) for code in codes])
-        pyperclip.copy(formatted_codes)
-        messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
-        d = MatchDialog(root)
+    d = MenuDialog(root)
 
 if __name__ == '__main__':
     main()
