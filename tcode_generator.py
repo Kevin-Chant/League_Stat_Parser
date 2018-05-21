@@ -11,7 +11,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.1'
+APP_VERSION = '1.0.2'
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -19,12 +19,22 @@ def print_status_info(info):
     status = info.get(u'status')
     print(downloaded, total, status)
 
-
+def load_config():
+    try:
+        config_file = open("config.json", "r")
+        config = json.load(config_file)
+    except:
+        config_file = open("config.json", "w")
+        config = generate_default_config()
+        json.dump(config, config_file)
+    return config
 
 config = load_config()
 
 if config["Autoupdate"]:
+    print("Checking for autoupdate")
     client = Client(ClientConfig())
+    print(client)
     client.refresh()
 
     client.add_progress_hook(print_status_info)
@@ -33,6 +43,7 @@ if config["Autoupdate"]:
                             progress_hooks=[print_status_info])
 
     app_update = client.update_check(APP_NAME, APP_VERSION)
+    print("App update is", app_update)
 
     if app_update is not None:
         app_update.download()
@@ -102,16 +113,6 @@ class ConfigInfo(simpledialog.Dialog):
 
 def generate_default_config():
     return {"Season": 4, "League": "Rampage", "Autoupdate": False}
-
-def load_config():
-    try:
-        config_file = open("config.json", "r")
-        config = json.load(config_file)
-    except:
-        config_file = open("config.json", "w")
-        config = generate_default_config()
-        json.dump(config, config_file)
-    return config
 
 def store_config(config):
     config_file = open("config.json", "w")
@@ -219,6 +220,7 @@ class MenuDialog(simpledialog.Dialog):
     def update_flow(self, event=None):
         print("Update triggered")
         print("This button might go away soon")
+        print("Unless I add a manual update flow check")
         pass
 
 
