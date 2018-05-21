@@ -119,7 +119,7 @@ class MenuDialog(simpledialog.Dialog):
             formatted_codes = "\n".join([str(code) for code in codes])
             pyperclip.copy(formatted_codes)
             messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
-            d = MatchDialog(self)
+            d = MatchDialog(self, league=config["League"])
 
     def single_code_flow(self, event=None):
         config = load_config()
@@ -135,7 +135,7 @@ class MenuDialog(simpledialog.Dialog):
             formatted_codes = "\n".join([str(code) for code in codes])
             pyperclip.copy(formatted_codes)
             messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
-            d = MatchDialog(self)
+            d = MatchDialog(self, league=config["League"])
 
     def update_flow(self, event=None):
         print("Update triggered")
