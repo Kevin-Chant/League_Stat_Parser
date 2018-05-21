@@ -29,20 +29,32 @@ def create_test_table_query():
 	query += "PRIMARY KEY(PlayerId, MatchID, TeamID));"
 	return query
 
-def upload_tcodes(metadata, codes):
+def upload_tcodes(metadata, codes, game=None):
 	bteam = metadata["Team1"]
 	rteam = metadata["Team2"]
 	season = metadata["Season"]
 	week = metadata["Week"]
 	league = metadata["League"]
 
-	values = [league, str(season), str(week), bteam, rteam, codes[0], codes[1], codes[2]]
-	for i in range(len(values)):
-		values[i] = "'" + values[i] + "'"
-	
+
+	if not game:
+		# init values with basic info for row and (required) first code
+		values = [league, str(season), str(week), bteam, rteam, codes[0]]
+		# append all remaining codes (so bo1 vs bo3 vs bo5 can all be uploaded)
+		for i in range(1,len(codes)):
+			values.append(codes[i])
+		values += [None] * (10 - len(values))
+		for i in range(len(values)):
+			values[i] = "'" + values[i] + "'"
+		query = "INSERT INTO TournamentCodes (League, Season, Week, Team1, Team2, code1, code2, code3, code4, code5) VALUES (" + ",".join(values) + ");"
+	else:
+		codecolumn = "code" + str(game)
+		conditions = "League = '{!s}' AND Season = {!s} AND Week = {!s} AND Team1 = '{!s}' AND Team2 = '{!s}'".format(league, season, week, bteam, rteam)
+		query = "UPDATE TournamentCodes SET " + codecolumn + " = '" + str(codes[0]) + "' WHERE " + conditions
+
 	db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
 	cursor = db.cursor()
-	cursor.execute("INSERT INTO TournamentCodes (League, Season, Week, Team1, Team2, code1, code2, code3) VALUES (" + ",".join(values) + ");")
+	cursor.execute(query)
 	db.close()
 
 def get_tcodes(league, week, team=None):
@@ -57,11 +69,11 @@ def get_tcodes(league, week, team=None):
 	vals = cursor.fetchall()
 	db.close()
 	for val in vals:
-		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7])
+		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7]) + "\n"
 	return rtn_str
 
 def main():
-	print(get_tcodes("Rampage", 1, team="5T"))
+	print(get_tcodes("Rampage", 2))
 
 if __name__ == '__main__':
 	main()

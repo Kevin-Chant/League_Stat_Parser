@@ -9,3 +9,4 @@ __pycache__/
 *.spec
 .cache/
 config.json
+.ipynb_checkpoints/

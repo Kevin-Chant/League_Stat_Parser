@@ -1,6 +1,7 @@
 import requests
 import json
-BASE = "https://americas.api.riotgames.com"
+T_BASE = "https://americas.api.riotgames.com"
+M_BASE = "https://na1.api.riotgames.com"
 RISEN_PROVIDER_ID = 1583
 
 def load_tournament_key():
@@ -15,7 +16,7 @@ def provider():
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
 	body = {"ProviderRegistrationParameters": pregparams}
-	url = BASE + endpoint
+	url = T_BASE + endpoint
 	r = requests.post(url, headers=headers, json=body)
 	return r
 
@@ -26,7 +27,7 @@ def tournament(league, season):
 				"providerId": RISEN_PROVIDER_ID
 					}
 	headers = {"X-Riot-Token": api_key}
-	url = BASE + endpoint
+	url = T_BASE + endpoint
 	r = requests.post(url, headers=headers, json=tparams)
 	return r.json()
 
@@ -42,7 +43,7 @@ def tournament_codes(tid, count, metadata={}, allowed_sids=None):
 		tcodeparams["allowedSummonerIds"] = allowed_sids
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
-	url = BASE + endpoint
+	url = T_BASE + endpoint
 	r = requests.post(url, headers=headers, json=tcodeparams)
 	if r.status_code != 200:
 		print(r.json())
@@ -50,10 +51,10 @@ def tournament_codes(tid, count, metadata={}, allowed_sids=None):
 	return r.json()
 
 def get_tournament_match(mid, tcode):
-	endpoint = "/lol/tournament/v3/matches/" + str(mid) + "/by-tournament-code/"+str(tcode)
+	endpoint = "/lol/match/v3/matches/" + str(mid) + "/by-tournament-code/"+str(tcode)
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
-	url = BASE + endpoint
+	url = M_BASE + endpoint
 	r = requests.get(url, headers=headers)
 	if r.status_code != 200:
 		print("Failed to get match " + str(mid) + " for tcode " + str(tcode))
@@ -62,10 +63,10 @@ def get_tournament_match(mid, tcode):
 
 
 def get_matches_for_tcode(tcode):
-	endpoint = "/lol/tournament/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
+	endpoint = "/lol/match/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
 	api_key = load_tournament_key()
 	headers = {"X-Riot-Token": api_key}
-	url = BASE + endpoint
+	url = M_BASE + endpoint
 	r = requests.get(url, headers=headers)
 	if r.status_code != 200:
 		print("Failed to get matches for tcode " + str(tcode))

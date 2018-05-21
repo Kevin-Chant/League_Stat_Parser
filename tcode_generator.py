@@ -4,6 +4,7 @@ import pyperclip
 from tournament import load_tournament_key, tournament_codes
 from db_access import upload_tcodes
 from os.path import isfile
+from traceback import print_exc
 import json
 
 tournament_ids = {  "Rampage_4": 393536,
@@ -41,6 +42,8 @@ class ConfigInfo(simpledialog.Dialog):
 
         Label(parent, text="Autoupdate").grid(row=2,column=0)
         autoupdate_checkbox.grid(row=2,column=1)
+
+        return league_dropdown
 
     def apply(self):
         season = self.season_entry.get()
@@ -81,20 +84,38 @@ def store_config(config):
     config_file = open("config.json", "w")
     json.dump(config, config_file)
 
+class CodeUploadDialog(simpledialog.Dialog):
+
+    def body(self, parent):
+        Label(parent, text="Enter the game of the series this code is being generated to replace.\nIf you don't know, press cancel and upload this code manually later.").grid(row=0,columnspan=2)
+
+        Label(parent, text="Game number:").grid(row=1, column=0)
+        self.game = Entry(parent)
+        self.game.grid(row=1, column=1)
+
+        return self.game
+
+    def apply(self):
+        self.result = self.game.get()
+
 class MenuDialog(simpledialog.Dialog):
 
     def body(self, parent):
         self.multiCodeButton = Button(parent, text="Generate Weekly Codes", command=self.weekly_code_flow)
         self.singleCodeButton = Button(parent, text="Generate Single Code", command=self.single_code_flow)
 
+        self.uploadButton = Button(parent, text="Upload Single Codes", command=self.upload_code_flow)
         self.configButton = Button(parent, text="Configure Settings and Keys", command=self.config_flow)
+
         self.updateButton = Button(parent, text="Self Update (coming soon)", command=self.update_flow)
 
         self.multiCodeButton.grid(row=0,column=0)
         self.singleCodeButton.grid(row=0,column=1)
 
         self.configButton.grid(row=1,column=0)
-        self.updateButton.grid(row=1,column=1)
+        self.uploadButton.grid(row=1,column=1)
+        
+        self.updateButton.grid(row=2,column=1)
     
     def apply(self):
         self.result = None
@@ -115,7 +136,7 @@ class MenuDialog(simpledialog.Dialog):
             if num_errs > 0:
                 d = MatchDialog(self, *d.result)
                 continue
-            codes = get_tcodes(*d.result)
+            codes = self.get_tcodes(*d.result)
             formatted_codes = "\n".join([str(code) for code in codes])
             pyperclip.copy(formatted_codes)
             messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
@@ -131,15 +152,105 @@ class MenuDialog(simpledialog.Dialog):
             if num_errs > 0:
                 d = MatchDialog(self, *d.result)
                 continue
-            codes = get_tcodes(*d.result)
+            codes = self.get_tcodes(*d.result)
             formatted_codes = "\n".join([str(code) for code in codes])
             pyperclip.copy(formatted_codes)
             messagebox.showinfo("Tournament Codes", "The codes for " + d.result[0] + " v " + d.result[1] + " week " + d.result[2] + " are\n" + formatted_codes + "\nThey have been automatically copied to your clipboard.")
             d = MatchDialog(self, league=config["League"])
 
+    def upload_code_flow(self, event=None):
+        config = load_config()
+        d = MatchDialog(self, league=config["League"],bestof=1)
+        while True:
+            if not d.result:
+                return
+            num_errs = error_check(self, *d.result)
+            if num_errs > 0:
+                d = MatchDialog(self, *d.result)
+                continue
+            else:
+                break
+        code = simpledialog.askstring("Input", "What is the code to upload?")
+        if code:
+            bteam, rteam, week, league, _ = d.result
+            metadata = {"League": league,
+                        "Season": load_config()["Season"],
+                        "Team1": bteam,
+                        "Team2": rteam,
+                        "Week": week
+                        }
+            if self.upload_single_code(metadata, [code]):
+                messagebox.showinfo("Success!", "Code successfully uploaded to DB")
+
+
     def update_flow(self, event=None):
         print("Update triggered")
         pass
+
+
+    def upload_single_code(self, metadata, codes):
+        while True:
+            d = CodeUploadDialog(self)
+            game = d.result
+            if not game:
+                return
+
+            # Error check
+            try:
+                game = int(game)
+                if not game in range(1,6):
+                    messagebox.showerror("Error", "Game should be a number 1-5")
+                else:
+                    resp = messagebox.askyesno("Upload code?", "Are you sure you want to overwrite the code for game " + str(game) +"? This cannot be undone.")
+                    if resp:
+                        try:
+                            upload_tcodes(metadata, codes, game=game)
+                            return True
+                        except Exception as e:
+                            messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
+                            messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
+                            print_exc()
+                    return
+            except:
+                messagebox.showerror("Error", "Game should be a number 1-5")
+
+
+    def get_tcodes(self, bteam, rteam, week, league, bo):
+        season = load_config()["Season"]
+        metadata = {"League": league,
+                    "Season": season,
+                    "Team1": bteam,
+                    "Team2": rteam,
+                    "Week": week
+                    }
+        g2_metadata = { "League": league,
+                        "Season": season,
+                        "Team1": rteam,
+                        "Team2": bteam,
+                        "Week": week
+                        }
+        tid = tournament_ids[league + "_" + str(season)]
+        if tid:
+            codes = []
+            for i in range(bo):
+                if i % 2 == 0:
+                    code = tournament_codes(tid, 1, metadata)[0]
+                else:
+                    code = tournament_codes(tid, 1, g2_metadata)[0]
+                codes.append(code)
+            try:
+                if len(codes) == 1:
+                    self.upload_single_code(metadata, codes)
+                else:
+                    upload_tcodes(metadata, codes)
+            except Exception as e:
+                messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
+                messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
+                print_exc()
+            return codes
+        else:
+            messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(season) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
+            exit(0)
 
 
 class MatchDialog(simpledialog.Dialog):
@@ -223,38 +334,6 @@ def setup_flow(parent):
                 f.write(db_pass)
                 f.close()
 
-def get_tcodes(bteam, rteam, week, league, bo):
-    season = load_config()["Season"]
-    metadata = {"League": league,
-                "Season": season,
-                "Team1": bteam,
-                "Team2": rteam,
-                "Week": week
-                }
-    g2_metadata = { "League": league,
-                    "Season": season,
-                    "Team1": rteam,
-                    "Team2": bteam,
-                    "Week": week
-                    }
-    tid = tournament_ids[league + "_" + str(season)]
-    if tid:
-        codes = []
-        for i in range(bo):
-            if i % 2 == 0:
-                code = tournament_codes(tid, 1, metadata)[0]
-            else:
-                code = tournament_codes(tid, 1, g2_metadata)[0]
-            codes.append(code)
-        try:
-            upload_tcodes(metadata, codes)
-        except Exception as e:
-            messagebox.showwarning("Warning", "The codes were unable to be automatically uploaded to the database. Please notify one of the staff members with DB access and provide the codes, teams, and week.")
-            messagebox.showinfo("Info", "Please provide this error information as well.\n" + str(e))
-        return codes
-    else:
-        messagebox.showerror("Error", "The tournament for " + league + ", Season " + str(season) + " has not yet been initialized. Please create the tournament and store the ID in this program.")
-        exit(0)
 
 def error_check(root, bteam, rteam, week, league, bo):
     numerrors = 0
