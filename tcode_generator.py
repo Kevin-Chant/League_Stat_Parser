@@ -11,7 +11,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.6'
+APP_VERSION = '1.0.8'
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -20,7 +20,7 @@ def print_status_info(info):
     print(downloaded, total, status)
 
 def generate_default_config():
-    return {"Season": 4, "League": "Rampage", "Autoupdate": False}
+    return {"Season": 4, "League": "Rampage", "Autoupdate": True}
 
 def store_config(config):
     config_file = open("config.json", "w")

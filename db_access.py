@@ -45,7 +45,7 @@ def upload_tcodes(metadata, codes, game=None):
 			values.append(codes[i])
 		values += [None] * (10 - len(values))
 		for i in range(len(values)):
-			values[i] = "'" + values[i] + "'"
+			values[i] = "'" + str(values[i]) + "'"
 		query = "INSERT INTO TournamentCodes (League, Season, Week, Team1, Team2, code1, code2, code3, code4, code5) VALUES (" + ",".join(values) + ");"
 	else:
 		codecolumn = "code" + str(game)
