@@ -7,12 +7,40 @@ from os.path import isfile
 from traceback import print_exc
 import json
 
+from pyupdater.client import Client
+from client_config import ClientConfig
+
+APP_NAME = 'Tournament Code Generator'
+APP_VERSION = '1.0.0'
+
+def print_status_info(info):
+    total = info.get(u'total')
+    downloaded = info.get(u'downloaded')
+    status = info.get(u'status')
+    print(downloaded, total, status)
+
+client = Client(ClientConfig())
+client.refresh()
+
+client.add_progress_hook(print_status_info)
+
+client = Client(ClientConfig(), refresh=True,
+                        progress_hooks=[print_status_info])
+
+app_update = client.update_check(APP_NAME, APP_VERSION)
+
+if app_update is not None:
+    app_update.download()
+    if app_update.is_downloaded():
+        app_update.extract_restart()
+
+
+
 tournament_ids = {  "Rampage_4": 393536,
                     "Dominate_4": 393545,
                     "Alumnus_4": 393546,
                     "Champions_4": 393547}
 
-VERSION = "0.9"
 CONFIG_KEYS = ["Season", "League", "Autoupdate"]
 
 class ConfigInfo(simpledialog.Dialog):
@@ -356,7 +384,7 @@ def error_check(root, bteam, rteam, week, league, bo):
 
 def main():
     root = Tk()
-    root.winfo_toplevel().title("Tournament Code Generator V " + str(VERSION))
+    root.winfo_toplevel().title("Tournament Code Generator V " + str(APP_VERSION))
     root.withdraw()
     setup_flow(root)
     d = MenuDialog(root)
