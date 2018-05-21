@@ -11,7 +11,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.3'
+APP_VERSION = '1.0.4'
 
 def print_status_info(info):
     total = info.get(u'total')
