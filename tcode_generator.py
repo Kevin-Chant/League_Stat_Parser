@@ -19,6 +19,13 @@ def print_status_info(info):
     status = info.get(u'status')
     print(downloaded, total, status)
 
+def generate_default_config():
+    return {"Season": 4, "League": "Rampage", "Autoupdate": False}
+
+def store_config(config):
+    config_file = open("config.json", "w")
+    json.dump(config, config_file)
+
 def load_config():
     try:
         config_file = open("config.json", "r")
@@ -111,12 +118,6 @@ class ConfigInfo(simpledialog.Dialog):
         else:
             self.result = None
 
-def generate_default_config():
-    return {"Season": 4, "League": "Rampage", "Autoupdate": False}
-
-def store_config(config):
-    config_file = open("config.json", "w")
-    json.dump(config, config_file)
 
 class CodeUploadDialog(simpledialog.Dialog):
 
