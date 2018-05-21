@@ -11,7 +11,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.2'
+APP_VERSION = '1.0.3'
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -221,8 +221,6 @@ class MenuDialog(simpledialog.Dialog):
     def update_flow(self, event=None):
         print("Update triggered")
         print("This button might go away soon")
-        print("Unless I add a manual update flow check")
-        pass
 
 
     def upload_single_code(self, metadata, codes):
