@@ -11,3 +11,5 @@ __pycache__/
 config.json
 .ipynb_checkpoints/
 .pyupdater/
+keypack.pyu
+pyu-data/

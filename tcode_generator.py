@@ -11,7 +11,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.0'
+APP_VERSION = '1.0.1'
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -19,20 +19,25 @@ def print_status_info(info):
     status = info.get(u'status')
     print(downloaded, total, status)
 
-client = Client(ClientConfig())
-client.refresh()
 
-client.add_progress_hook(print_status_info)
 
-client = Client(ClientConfig(), refresh=True,
-                        progress_hooks=[print_status_info])
+config = load_config()
 
-app_update = client.update_check(APP_NAME, APP_VERSION)
+if config["Autoupdate"]:
+    client = Client(ClientConfig())
+    client.refresh()
 
-if app_update is not None:
-    app_update.download()
-    if app_update.is_downloaded():
-        app_update.extract_restart()
+    client.add_progress_hook(print_status_info)
+
+    client = Client(ClientConfig(), refresh=True,
+                            progress_hooks=[print_status_info])
+
+    app_update = client.update_check(APP_NAME, APP_VERSION)
+
+    if app_update is not None:
+        app_update.download()
+        if app_update.is_downloaded():
+            app_update.extract_restart()
 
 
 
@@ -213,6 +218,7 @@ class MenuDialog(simpledialog.Dialog):
 
     def update_flow(self, event=None):
         print("Update triggered")
+        print("This button might go away soon")
         pass
 
 
