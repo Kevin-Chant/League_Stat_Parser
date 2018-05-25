@@ -68,10 +68,14 @@ def get_matches_for_tcode(tcode):
 	headers = {"X-Riot-Token": api_key}
 	url = M_BASE + endpoint
 	r = requests.get(url, headers=headers)
-	if r.status_code != 200:
+	if r.status_code == 404:
+		print("Tcode " + str(tcode) + " does not have any games associated with it.")
+		return None
+	elif r.status_code != 200:
 		print("Failed to get matches for tcode " + str(tcode))
+		print(r)
 		return r
 	matches = []
 	for match_id in r.json():
 		matches.append(get_tournament_match(match_id, tcode))
-	return matches
+	return matches	

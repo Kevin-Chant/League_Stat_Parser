@@ -57,7 +57,18 @@ def upload_tcodes(metadata, codes, game=None):
 	cursor.execute(query)
 	db.close()
 
-def get_tcodes(league, week, team=None):
+def get_unformatted_tcodes(league, week, team):
+	db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
+	cursor = db.cursor()
+	query = "SELECT code1,code2,code3,code4,code5 FROM TournamentCodes WHERE League = '{!s}'".format(league)
+	query += " AND Week = {!s}".format(str(week))
+	query += " AND (Team1 = '{!s}' OR Team2 = '{!s}')".format(team,team)
+	cursor.execute(query)
+	vals = cursor.fetchall()
+	db.close()
+	return [v for v in vals[0] if v != None]
+
+def get_formatted_tcodes(league, week, team=None):
 	rtn_str = "Week " + str(week) + ":\n"
 	db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
 	cursor = db.cursor()
@@ -69,11 +80,32 @@ def get_tcodes(league, week, team=None):
 	vals = cursor.fetchall()
 	db.close()
 	for val in vals:
-		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7]) + "\n"
+		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7]) + "\n" + "\n".join([v for v in val[8:] if v != None]) + "\n"
 	return rtn_str
 
+def get_match_history_links(league, week, team):
+	from tournament import get_matches_for_tcode
+	codes = get_unformatted_tcodes(league, week, team)
+	linkbase = "https://matchhistory.na.leagueoflegends.com/en/#match-details/NA1/"
+	linksuffix = "?tab=overview"
+	links = []
+	print("codes are")
+	print(codes)
+	for code in codes:
+		matches = get_matches_for_tcode(code)
+		if matches:
+			for m in matches:
+				pid = m["participantIdentities"][0]["player"]["summonerId"]
+				link = linkbase + str(m["gameId"]) + "/" + str(pid) + linksuffix
+				links.append(link)
+	return links
+
+
+
+
 def main():
-	print(get_tcodes("Rampage", 2))
+	# print(get_formatted_tcodes("Rampage", 3))
+	print("\n".join(get_match_history_links("Dominate", 1, "L9")))
 
 if __name__ == '__main__':
 	main()

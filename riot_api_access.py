@@ -2,7 +2,7 @@ import requests
 import sys
 import time
 import helpers
-import os
+import sys
 BASE = "https://na1.api.riotgames.com"
 QUEUES = [400, 420, 430, 440]
 
@@ -128,7 +128,7 @@ def get_match_from_id(matchid, SECRET_API_KEY=None):
 			print("Waiting " + str(t) + " seconds and trying again")
 			print("Full response:")
 			print(r.json())
-			os.stdout.flush()
+			sys.stdout.flush()
 			time.sleep(t)
 			return get_match_from_id(matchid, SECRET_API_KEY)
 		if r.status_code != 200:
@@ -155,13 +155,16 @@ def get_match_history(accountid, beginTime=None, endTime=None, champions=None, S
 		params["champion"] = champions
 	r = requests.get(url, headers=headers, params=params)
 	if r.status_code == 429:
-		print(r.json())
-		t = r.json()["Retry-After"]
+		try:
+			t = r.json()["Retry-After"]
+		except:
+			t = 180
 		print("Waiting " + str(t) + " seconds and trying again")
 		print("Full response:")
 		print(r.json())
+		sys.stdout.flush()
 		time.sleep(t)
-		return get_match_from_id(matchid, SECRET_API_KEY)
+		return get_match_history(accountid, beginTime, endTime, champions, SECRET_API_KEY)
 	if r.status_code == 404:
 		print("There is no match history in that time frame")
 		return {"matches":[]}
