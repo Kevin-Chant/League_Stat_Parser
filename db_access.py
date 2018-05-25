@@ -1,5 +1,6 @@
 import pymysql
 from os.path import isfile
+from tournament import get_matches_for_tcode
 IP = "50.62.176.249"
 DB_USER = "StatisticsTeam"
 SCHEMA_DB = "information_schema"
@@ -84,7 +85,6 @@ def get_formatted_tcodes(league, week, team=None):
 	return rtn_str
 
 def get_match_history_links(league, week, team):
-	from tournament import get_matches_for_tcode
 	codes = get_unformatted_tcodes(league, week, team)
 	linkbase = "https://matchhistory.na.leagueoflegends.com/en/#match-details/NA1/"
 	linksuffix = "?tab=overview"
