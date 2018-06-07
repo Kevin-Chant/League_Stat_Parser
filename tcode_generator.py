@@ -2,7 +2,7 @@ from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messa
 from tkinter import *
 import pyperclip
 from tournament import load_tournament_key, tournament_codes, get_matches_for_tcode
-from db_access import upload_tcodes, get_match_history_links
+from db_access import upload_tcodes, get_match_history_links, get_formatted_tcodes
 from os.path import isfile
 from traceback import print_exc
 import json
@@ -12,7 +12,7 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.0.9'
+APP_VERSION = '1.1.0'
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -143,7 +143,9 @@ class MenuDialog(simpledialog.Dialog):
         self.uploadButton = Button(parent, text="Upload Single Code", command=self.upload_code_flow)
         self.configButton = Button(parent, text="Configure Settings and Keys", command=self.config_flow)
 
+        self.getCodeButton = Button(parent, text="Get and Format Weekly Codes", command=self.get_code_flow)
         self.matchHistButton = Button(parent, text="Get Match History Links", command=self.match_hist_flow)
+
         self.updateButton = Button(parent, text="Check for updates", command=self.update_flow)
 
         self.multiCodeButton.grid(row=0,column=0)
@@ -152,8 +154,10 @@ class MenuDialog(simpledialog.Dialog):
         self.configButton.grid(row=1,column=0)
         self.uploadButton.grid(row=1,column=1)
 
+        self.getCodeButton.grid(row=2,column=1)
         self.matchHistButton.grid(row=2,column=0)
-        self.updateButton.grid(row=2,column=1)
+        
+        self.updateButton.grid(row=3,column=0)
     
     def apply(self):
         self.result = None
@@ -248,6 +252,18 @@ class MenuDialog(simpledialog.Dialog):
         except Exception as e:
             messagebox.showerror("Error", "Unable to get requested links\n" + str(e))
 
+    def get_code_flow(self, event=None):
+        d = CodeFetchDialog(self)
+        if not d.result:
+            return
+        week, league = d.result
+        messagebox.showinfo("Working", "Will get all tournament codes for " + league + " week " + str(week))
+        try:
+            codes = get_formatted_tcodes(league, week)
+            pyperclip.copy(codes)
+            messagebox.showinfo("Done", "Successfully got codes and copied the formatted output to your clipboard")
+        except Exception as e:
+            messagebox.showerror("Error", "Unable to get requested codes\n" + str(e))
 
     def update_flow(self, event=None):
         if is_update_avail():
@@ -405,6 +421,38 @@ class HistoryDialog(simpledialog.Dialog):
         league = self.league.get()
 
         self.result = (team,week,league)
+
+class CodeFetchDialog(simpledialog.Dialog):
+    def __init__(self, parent, week=None, league=None):
+        self.weekval = week
+        self.leagueval = league
+
+        super(CodeFetchDialog, self).__init__(parent)
+
+    def body(self, master):
+
+        Label(master, text="Week:").grid(row=0,column=0)
+
+        self.week = Entry(master)
+
+        if self.weekval:
+            self.week.insert(END, self.weekval)
+
+        self.league = StringVar(master)
+        self.league.set(load_config()["League"]) # initial value
+        if self.leagueval:
+            self.league.set(self.leagueval)
+        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+
+        self.week.grid(row=0, column=1)
+        league_dropdown.grid(row=1, column=1)
+        return self.week # initial focus
+
+    def apply(self):
+        week = self.week.get()
+        league = self.league.get()
+
+        self.result = (week,league)
 
 class HistoryPopup(simpledialog.Dialog):
     def __init__(self, parent, links):

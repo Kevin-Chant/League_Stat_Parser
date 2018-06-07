@@ -1,5 +1,9 @@
 import requests
 import json
+import helpers
+import sys
+import time
+import os
 T_BASE = "https://americas.api.riotgames.com"
 M_BASE = "https://na1.api.riotgames.com"
 RISEN_PROVIDER_ID = 1583
@@ -63,19 +67,37 @@ def get_tournament_match(mid, tcode):
 
 
 def get_matches_for_tcode(tcode):
-	endpoint = "/lol/match/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
-	api_key = load_tournament_key()
-	headers = {"X-Riot-Token": api_key}
-	url = M_BASE + endpoint
-	r = requests.get(url, headers=headers)
-	if r.status_code == 404:
-		print("Tcode " + str(tcode) + " does not have any games associated with it.")
-		return None
-	elif r.status_code != 200:
-		print("Failed to get matches for tcode " + str(tcode))
-		print(r)
-		return r
-	matches = []
-	for match_id in r.json():
-		matches.append(get_tournament_match(match_id, tcode))
+	path = ".cache/tournament_matches/" + tcode + ".json"
+	matches = helpers.load_json(path)
+	miss = True
+	if matches is not None:
+		file_creation = os.path.getmtime(path)
+		expiry_time = 3600 * 24 * 2
+		miss = (matches == [] and time.time() > file_creation + expiry_time)
+	if miss:
+		print("Waiting due to cache miss")
+		sys.stdout.flush()
+		time.sleep(2)
+		
+		endpoint = "/lol/match/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
+		api_key = load_tournament_key()
+		headers = {"X-Riot-Token": api_key}
+		url = M_BASE + endpoint
+		r = requests.get(url, headers=headers)
+		if r.status_code == 404:
+			print("Tcode " + str(tcode) + " does not have any games associated with it.")
+			matches = []
+			helpers.store_json(matches, path, True)
+			return matches
+		elif r.status_code == 429:
+			print("Hit a retry-after when getting tournament matches. Exiting")
+			exit(0)
+		elif r.status_code != 200:
+			print("Failed to get matches for tcode " + str(tcode))
+			print(r)
+			return r
+		matches = []
+		for match_id in r.json():
+			matches.append(get_tournament_match(match_id, tcode))
+		helpers.store_json(matches, path, True)
 	return matches	

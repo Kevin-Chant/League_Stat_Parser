@@ -1,8 +1,13 @@
 import os.path
 from collections import defaultdict
 import riot_api_access as riot
+from collections import Counter
 from global_defs import *
 from helpers import *
+from db_access import execute_query
+from tournament import get_matches_for_tcode
+import time
+import sys
 
 def get_overall_player_stats(match_obj, participant_id=None, summoner_name=None, lane_role=None, teamId=None):
 	try:
@@ -103,3 +108,113 @@ def get_and_cache_user_history(summonername, start_epoch=None, end_epoch=None, c
     history = riot.get_match_history(aid, start_epoch, end_epoch, champion)["matches"]
     stats = stats_from_filtered_matches([match["gameId"] for match in history], summonername, [], [], lane_role)
     return stats
+
+def standard_lane_roles():
+	return [("TOP", "SOLO"), ("JUNGLE", "NONE"), ("MIDDLE", "SOLO"), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]
+
+def check_game_roles_match_meta(match_obj):
+	teams = {100: [], 200:[]}
+	for p in match_obj["participants"]:
+		teams[p["teamId"]].append((p["timeline"]["lane"], p["timeline"]["role"]))
+	return Counter(teams[100]) == Counter(standard_lane_roles()) and Counter(teams[200]) == Counter(standard_lane_roles())
+
+def get_num_unclassifiable_games(league=None):
+	# get all tcodes
+	if league:
+		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE League = \'" + league + "\';")
+	else:
+		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes")
+	codelist = []
+	for row in codes:
+		codelist.extend([c for c in row if c is not None and c != "None"])
+
+	# get associated matches
+	matches = []
+	i = 0
+	for code in codelist:
+		print(i)
+		sys.stdout.flush()
+		m = get_matches_for_tcode(code)
+		if m is not None and len(m) > 0:
+			matches.append(m[0])
+		i+=1
+	# check matches
+	bool_checklist = [check_game_roles_match_meta(m) for m in matches]
+	print("Out of " + str(len(bool_checklist)) + " games, there were " + str(len(bool_checklist) - sum(bool_checklist)) + " that had misclassified roles")
+	return len(bool_checklist) - sum(bool_checklist)
+
+def get_player_weekly_stats(week, league=None):
+	# get all tcodes
+	if league:
+		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week) + " AND League = \'" + league + "\';")
+	else:
+		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week))
+	codelist = []
+	for row in codes:
+		codelist.extend([c for c in row if c is not None and c != "None"])
+
+	# get associated matches
+	matches = []
+	for code in codelist:
+		try:
+			m = get_matches_for_tcode(code)
+		except:
+			print(code)
+			exit(0)
+		if m is not None and len(m) > 0:
+			matches.append(m[0])
+
+	# get player stats
+	stats = {}
+	stat_dict = {"Kills": 0, "Deaths": 0, "Assists": 0, "CS": 0, "Time in game": 0, "Num games": 0, "Team's kills": 0, "Wards": 0, "Control wards":0, "Vision score": 0, "Dmg to champs": 0, "Max dpm": 0}
+	for match in matches:
+		for i in range(10):
+			name = match["participantIdentities"][i]["player"]["summonerName"]
+			player = match["participants"][i]
+			if name not in stats:
+				stats[name] = stat_dict.copy()
+			dct = stats[name]
+			dct["Kills"] += player["stats"]["kills"]
+			dct["Deaths"] += player["stats"]["deaths"]
+			dct["Assists"] += player["stats"]["assists"]
+
+			dct["CS"] += player["stats"]["totalMinionsKilled"]
+
+			dct["Time in game"] += match["gameDuration"]
+			dct["Num games"] += 1
+
+			dct["Team's kills"] += sum(p["stats"]["kills"] for p in find_matching_fields_in_list(player["teamId"], "teamId", match["participants"]))
+
+			dct["Wards"] += player["stats"]["wardsPlaced"]
+			dct["Control wards"] += player["stats"]["visionWardsBoughtInGame"]
+			dct["Vision score"] += player["stats"]["visionScore"]
+
+			dct["Dmg to champs"] += player["stats"]["totalDamageDealtToChampions"]
+			dct["Max dpm"] = max(round(float(player["stats"]["totalDamageDealtToChampions"])/match["gameDuration"] * 60), dct["Max dpm"])
+
+	for player in stats:
+		dct = stats[player]
+		dct["kda"] = round(float(dct["Kills"] + dct["Assists"])/max(dct["Deaths"], 1), 2)
+		dct["KP"] = round(float(dct["Kills"] + dct["Assists"])/max(dct["Team's kills"], 1), 3)
+		dct["CSPM"] = round(float(dct["CS"])/dct["Time in game"] * 60, 1)
+		dct["DPM"] = round(float(dct["Dmg to champs"])/dct["Time in game"] * 60)
+		dct["Vision score"] = round(float(dct["Vision score"])/dct["Num games"],1)
+
+	return stats
+
+
+
+if __name__ == "__main__":
+	for week in range(1,4):
+		for league in ["Rampage", "Dominate", "Alumnus", "Champions"]:
+			stats = get_player_weekly_stats(week,league)
+
+			stats_order = ["Kills", "Deaths", "Assists", "kda", "KP", "CS", "CSPM", "Time in game", "Num games", "Wards", "Control wards", "Vision score", "DPM", "Max dpm"]
+			out = open("output_files/week_{!s}_{!s}_stats.csv".format(str(week), league), "w", encoding='utf8')
+			out.write(",".join(["Player"] + stats_order) + "\n")
+			for player in stats:
+				stat_list = []
+				for stat in stats_order:
+					stat_list.append(str(stats[player][stat]))
+				out.write(",".join([player] + stat_list) + "\n")
+			out.close()

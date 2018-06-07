@@ -1,6 +1,7 @@
 import pymysql
 from os.path import isfile
 from tournament import get_matches_for_tcode
+import json
 IP = "50.62.176.249"
 DB_USER = "StatisticsTeam"
 SCHEMA_DB = "information_schema"
@@ -81,7 +82,7 @@ def get_formatted_tcodes(league, week, team=None):
 	vals = cursor.fetchall()
 	db.close()
 	for val in vals:
-		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7]) + "\n" + "\n".join([v for v in val[8:] if v != None]) + "\n"
+		rtn_str += val[2] + " vs " + val[3] + ":\n" + "\n".join(val[4:7]) + "\n" + "\n".join([v for v in val[8:] if v is not None and v != "None"]) + "\n"
 	return rtn_str
 
 def get_match_history_links(league, week, team):
@@ -100,12 +101,17 @@ def get_match_history_links(league, week, team):
 				links.append(link)
 	return links
 
-
+def execute_query(query, db=WEBSITE_DB):
+	db = pymysql.connect(IP, DB_USER, load_db_password(), db)
+	cursor = db.cursor()
+	cursor.execute(query)
+	result = cursor.fetchall()
+	db.close()
+	return result
 
 
 def main():
-	# print(get_formatted_tcodes("Rampage", 3))
-	print("\n".join(get_match_history_links("Dominate", 1, "L9")))
+	print(get_formatted_tcodes("Rampage", 5))
 
 if __name__ == '__main__':
 	main()

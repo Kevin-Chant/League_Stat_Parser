@@ -8,7 +8,7 @@ def store_json(json_obj, filename, force=False):
     if os.path.isfile(filename) and not force:
         print("Cannot store at " + filename + ".\nFile already exists.")
         return False
-    if not isinstance(json_obj, dict):
+    if not isinstance(json_obj, dict) and not isinstance(json_obj, list):
         print("Must be given a valid dictionary to store")
         raise ValueError()
         # return False

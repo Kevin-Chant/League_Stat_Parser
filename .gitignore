@@ -13,3 +13,4 @@ config.json
 .pyupdater/
 keypack.pyu
 pyu-data/
+output_files/
