@@ -3,7 +3,8 @@ from tkinter import *
 import pyperclip
 from tournament import load_tournament_key, tournament_codes, get_matches_for_tcode
 from db_access import upload_tcodes, get_match_history_links, get_formatted_tcodes
-from os.path import isfile
+from os.path import isfile, isdir
+from os import mkdir
 from traceback import print_exc
 import json
 import webbrowser
@@ -504,6 +505,11 @@ def setup_flow(parent):
                 f.write(db_pass)
                 f.close()
 
+    if not isdir(".cache/"):
+        mkdir(".cache/")
+
+    if not isdir(".cache/tournament_matches/"):
+        mkdir(".cache/tournament_matches/")
 
 def error_check(root, bteam, rteam, week, league, bo):
     numerrors = 0

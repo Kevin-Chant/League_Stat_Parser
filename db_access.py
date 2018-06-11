@@ -93,6 +93,8 @@ def get_match_history_links(league, week, team):
 	print("codes are")
 	print(codes)
 	for code in codes:
+		if not code or code == "None":
+			continue
 		matches = get_matches_for_tcode(code)
 		if matches:
 			for m in matches:
