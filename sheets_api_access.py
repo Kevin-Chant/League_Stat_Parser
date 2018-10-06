@@ -185,36 +185,44 @@ def update_rmt_stats(start_date, service=None):
     for i in range(len(TEAM_MEMBER_NAMES)):
         print("Getting stats on " + TEAM_MEMBER_NAMES[i])
         sys.stdout.flush()
-        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
-        stats["Player"] = TEAM_MEMBER_NAMES[i]
-        to_write.append([stats[key] for key in OVERALL_STATS])
+        # Single role getter
+        # stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
+        # stats["Player"] = TEAM_MEMBER_NAMES[i]
+        # to_write.append([stats[key] for key in OVERALL_STATS])
+        
+        # All role getter
+        for role in ALL_ROLES:
+            stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, role)
+            stats["Player"] = TEAM_MEMBER_NAMES[i]
+            if stats["Number of games"] > 0:
+                to_write.append([stats[key] for key in OVERALL_STATS])
     print("Writing time")
     to_write.append(["Last updated", str(datetime.date.today())])
     r4 = enter_rows(RMT_STATS_SHEET, sheetId, 2, to_write, service)
 
-    sheetId="Total Player Stats"
-    if not get_numeric_sheetId(RMT_STATS_SHEET, sheetId, service):
-        create_sheet(RMT_STATS_SHEET, sheetId, service)
-    r = enter_rows(RMT_STATS_SHEET, sheetId, 1, [OVERALL_STATS], service)
-    r = format_player_stat_sheet(RMT_STATS_SHEET, sheetId, service)
-    start_date = "4/1"
-    epoch = date_to_epoch(int(start_date[0]), int(start_date[2:]), 2018)
-    to_write = []
-    for i in range(len(TEAM_MEMBER_NAMES)):
-        print("Getting stats on " + TEAM_MEMBER_NAMES[i])
-        sys.stdout.flush()
-        stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
-        stats["Player"] = TEAM_MEMBER_NAMES[i]
-        to_write.append([stats[key] for key in OVERALL_STATS])
-    print("Writing time")
-    to_write.append([])
-    to_write.append(["Stats since 4/1"])
-    to_write.append(["Last updated", str(datetime.date.today())])
-    r4 = enter_rows(RMT_STATS_SHEET, sheetId, 2, to_write, service)
+    # sheetId="Total Player Stats"
+    # if not get_numeric_sheetId(RMT_STATS_SHEET, sheetId, service):
+    #     create_sheet(RMT_STATS_SHEET, sheetId, service)
+    # r = enter_rows(RMT_STATS_SHEET, sheetId, 1, [OVERALL_STATS], service)
+    # r = format_player_stat_sheet(RMT_STATS_SHEET, sheetId, service)
+    # start_date = "4/1"
+    # epoch = date_to_epoch(int(start_date[0]), int(start_date[2:]), 2018)
+    # to_write = []
+    # for i in range(len(TEAM_MEMBER_NAMES)):
+    #     print("Getting stats on " + TEAM_MEMBER_NAMES[i])
+    #     sys.stdout.flush()
+    #     stats = get_and_cache_user_history(TEAM_MEMBER_NAMES[i], epoch, None, None, TEAM_MEMBER_ROLES[i])
+    #     stats["Player"] = TEAM_MEMBER_NAMES[i]
+    #     to_write.append([stats[key] for key in OVERALL_STATS])
+    # print("Writing time")
+    # to_write.append([])
+    # to_write.append(["Stats since 4/1"])
+    # to_write.append(["Last updated", str(datetime.date.today())])
+    # r4 = enter_rows(RMT_STATS_SHEET, sheetId, 2, to_write, service)
 
 
 if __name__ == "__main__":
-    update_rmt_stats("4/26")
+    update_rmt_stats("6/24")
     # service = credential_service_setup()
     # sheetId="Champion Stats Test"
     # if not get_numeric_sheetId(STATS_TESTING_SHEET, sheetId, service):

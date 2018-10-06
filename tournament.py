@@ -4,20 +4,17 @@ import helpers
 import sys
 import time
 import os
+from db_access import fetch_api_key
 T_BASE = "https://americas.api.riotgames.com"
 M_BASE = "https://na1.api.riotgames.com"
-RISEN_PROVIDER_ID = 1583
-
-def load_tournament_key():
-	keyfile = open("tournament_key.txt")
-	return keyfile.readlines()[0].strip()
+RISEN_PROVIDER_ID = 1725
 
 def provider():
 	endpoint = "/lol/tournament/v3/providers/"
 	pregparams = {	"region": "NA",
 					"url": "https://www.risenesports.org/"
 					}
-	api_key = load_tournament_key()
+	api_key = fetch_api_key()
 	headers = {"X-Riot-Token": api_key}
 	body = {"ProviderRegistrationParameters": pregparams}
 	url = T_BASE + endpoint
@@ -26,7 +23,7 @@ def provider():
 
 def tournament(league, season):
 	endpoint = "/lol/tournament/v3/tournaments"
-	api_key = load_tournament_key()
+	api_key = fetch_api_key()
 	tparams= {	"name": "Risen " + league + " Season " + str(season),
 				"providerId": RISEN_PROVIDER_ID
 					}
@@ -45,7 +42,7 @@ def tournament_codes(tid, count, metadata={}, allowed_sids=None):
 					}
 	if allowed_sids:
 		tcodeparams["allowedSummonerIds"] = allowed_sids
-	api_key = load_tournament_key()
+	api_key = fetch_api_key()
 	headers = {"X-Riot-Token": api_key}
 	url = T_BASE + endpoint
 	r = requests.post(url, headers=headers, json=tcodeparams)
@@ -56,19 +53,24 @@ def tournament_codes(tid, count, metadata={}, allowed_sids=None):
 
 def get_tournament_match(mid, tcode):
 	endpoint = "/lol/match/v3/matches/" + str(mid) + "/by-tournament-code/"+str(tcode)
-	api_key = load_tournament_key()
+	api_key = fetch_api_key()
 	headers = {"X-Riot-Token": api_key}
 	url = M_BASE + endpoint
 	r = requests.get(url, headers=headers)
 	if r.status_code != 200:
 		print("Failed to get match " + str(mid) + " for tcode " + str(tcode))
-		return r
+		print(r.json())
+		return None
 	return r.json()
 
 
 def get_matches_for_tcode(tcode):
 	path = ".cache/tournament_matches/" + tcode + ".json"
-	matches = helpers.load_json(path)
+	try:
+		matches = helpers.load_json(path)
+	except:
+		print("Failed to load path")
+		print(path)
 	miss = True
 	if matches is not None:
 		file_creation = os.path.getmtime(path)
@@ -80,7 +82,7 @@ def get_matches_for_tcode(tcode):
 		time.sleep(2)
 		
 		endpoint = "/lol/match/v3/matches/by-tournament-code/"+str(tcode)+"/ids"
-		api_key = load_tournament_key()
+		api_key = fetch_api_key()
 		headers = {"X-Riot-Token": api_key}
 		url = M_BASE + endpoint
 		r = requests.get(url, headers=headers)
@@ -98,6 +100,8 @@ def get_matches_for_tcode(tcode):
 			return r
 		matches = []
 		for match_id in r.json():
-			matches.append(get_tournament_match(match_id, tcode))
+			match = get_tournament_match(match_id, tcode)
+			if match:
+				matches.append(match)
 		helpers.store_json(matches, path, True)
-	return matches	
+	return matches

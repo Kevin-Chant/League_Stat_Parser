@@ -1,7 +1,7 @@
 from tkinter import simpledialog, Tk, Label, Entry, StringVar, OptionMenu, messagebox, END, Button
 from tkinter import *
 import pyperclip
-from tournament import load_tournament_key, tournament_codes, get_matches_for_tcode
+from tournament import tournament_codes, get_matches_for_tcode
 from db_access import upload_tcodes, get_match_history_links, get_formatted_tcodes
 from os.path import isfile, isdir
 from os import mkdir
@@ -13,7 +13,8 @@ from pyupdater.client import Client
 from client_config import ClientConfig
 
 APP_NAME = 'Tournament Code Generator'
-APP_VERSION = '1.1.0'
+APP_VERSION = '1.2.2'
+ALL_LEAGUES = ["Rampage Open", "Dominate Open", "Rampage Premade", "Dominate Premade", "Champions"]
 
 def print_status_info(info):
     total = info.get(u'total')
@@ -22,7 +23,7 @@ def print_status_info(info):
     print(downloaded, total, status)
 
 def generate_default_config():
-    return {"Season": 4, "League": "Rampage", "Autoupdate": True}
+    return {"Season": 5, "League": "Rampage Open", "Autoupdate": True}
 
 def store_config(config):
     config_file = open("config.json", "w")
@@ -61,10 +62,12 @@ if config["Autoupdate"]:
 
 
 
-tournament_ids = {  "Rampage_4": 393536,
-                    "Dominate_4": 393545,
-                    "Alumnus_4": 393546,
-                    "Champions_4": 393547}
+tournament_ids = {  "Rampage Open_5": 442892,
+                    "Dominate Open_5": 442893,
+                    "Rampage Premade_5": 442894,
+                    "Dominate Premade_5": 442895,
+                    "Champions_5": 442896
+                }
 
 CONFIG_KEYS = ["Season", "League", "Autoupdate"]
 
@@ -81,7 +84,7 @@ class ConfigInfo(simpledialog.Dialog):
 
         self.league = StringVar(parent)
         self.league.set(self.prev_config["League"])
-        league_dropdown = OptionMenu(parent, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+        league_dropdown = OptionMenu(parent, self.league, *ALL_LEAGUES)
         
         self.autoupdate = BooleanVar()
         self.autoupdate.set(self.prev_config["Autoupdate"])
@@ -359,7 +362,7 @@ class MatchDialog(simpledialog.Dialog):
         self.league.set(load_config()["League"]) # initial value
         if self.leagueval:
             self.league.set(self.leagueval)
-        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+        league_dropdown = OptionMenu(master, self.league, *ALL_LEAGUES)
 
         self.bo = IntVar(master)
         self.bo.set(3) # initial value
@@ -409,7 +412,7 @@ class HistoryDialog(simpledialog.Dialog):
         self.league.set(load_config()["League"]) # initial value
         if self.leagueval:
             self.league.set(self.leagueval)
-        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+        league_dropdown = OptionMenu(master, self.league, *ALL_LEAGUES)
 
         self.team.grid(row=0, column=1)
         self.week.grid(row=1, column=1)
@@ -443,7 +446,7 @@ class CodeFetchDialog(simpledialog.Dialog):
         self.league.set(load_config()["League"]) # initial value
         if self.leagueval:
             self.league.set(self.leagueval)
-        league_dropdown = OptionMenu(master, self.league, "Rampage", "Dominate", "Alumnus", "Champions")
+        league_dropdown = OptionMenu(master, self.league, *ALL_LEAGUES)
 
         self.week.grid(row=0, column=1)
         league_dropdown.grid(row=1, column=1)
@@ -483,17 +486,6 @@ class HistoryPopup(simpledialog.Dialog):
 
 
 def setup_flow(parent):
-    if not isfile("tournament_key.txt"):
-        tkey = simpledialog.askstring("Input", "Please enter the tournament API key", parent=parent)
-        if not tkey:
-            messagebox.showwarning("Warning", "Tournament API key not entered, exiting program.")
-            exit(0)
-        localsave = messagebox.askyesno("Question", "Do you want this program to save the tournament API key locally? If you choose yes, take special care not to give tournament_key.txt to anyone.") 
-        if localsave:
-            with open("tournament_key.txt", "w") as f:
-                f.write(tkey)
-                f.close()
-
     if not isfile("db_pass.txt"):
         db_pass = simpledialog.askstring("Input", "Please enter the database password", parent=parent)
         if not db_pass:
@@ -513,11 +505,11 @@ def setup_flow(parent):
 
 def error_check(root, bteam, rteam, week, league, bo):
     numerrors = 0
-    if not len(bteam) in [1,2,3,4]:
-        messagebox.showerror("Error", "The blue team should be the 1-4 letter team acronym.")
+    if not len(bteam) in [1,2,3,4,5]:
+        messagebox.showerror("Error", "The blue team should be the 1-5 letter team acronym.")
         numerrors += 1
-    if not len(rteam) in [1,2,3,4]:
-        messagebox.showerror("Error", "The red team should be the 1-4 letter team acronym.")
+    if not len(rteam) in [1,2,3,4,5]:
+        messagebox.showerror("Error", "The red team should be the 1-5 letter team acronym.")
         numerrors += 1
     try:
         w = int(week)

@@ -1,6 +1,5 @@
 import pymysql
 from os.path import isfile
-from tournament import get_matches_for_tcode
 import json
 IP = "50.62.176.249"
 DB_USER = "StatisticsTeam"
@@ -19,6 +18,16 @@ def load_db_password():
 # cursor = db.cursor()
 # cursor.execute("Query string")
 # db.close()
+
+def fetch_api_key():
+	db = pymysql.connect(IP, DB_USER, load_db_password(), WEBSITE_DB)
+	cursor = db.cursor()
+	query = "SELECT `Key Value` FROM API_ACCESS_KEYS WHERE `API NAME` = 'Riot Tournament API'"
+	cursor.execute(query)
+	row = cursor.fetchall()[0]
+	db.close()
+	return row[0]
+
 
 def create_test_table_query():
 	columnnames = ['PlayerID', 'MatchID', 'TeamID', 'assists', 'champLevel', 'damageDealtToObjectives', 'damageDealtToTurrets', 'damageSelfMitigated', 'deaths', 'doubleKills', 'firstBloodAssist', 'firstBloodKill', 'firstTowerAssist', 'firstTowerKill', 'goldEarned', 'inhibitorKills', 'item0', 'item1', 'item2', 'item3', 'item4', 'item5', 'item6', 'kills', 'largestKillingSpree', 'longestTimeSpentLiving', 'neutralMinionsKilled', 'neutralMinionsKilledEnemyJungle', 'neutralMinionsKilledTeamJungle', 'participantId', 'pentaKills', 'perk0', 'perk0Var1', 'perk0Var2', 'perk0Var3', 'perk1', 'perk1Var1', 'perk1Var2', 'perk1Var3', 'perk2', 'perk2Var1', 'perk2Var2', 'perk2Var3', 'perk3', 'perk3Var1', 'perk3Var2', 'perk3Var3', 'perk4', 'perk4Var1', 'perk4Var2', 'perk4Var3', 'perk5', 'perk5Var1', 'perk5Var2', 'perk5Var3', 'perkPrimaryStyle', 'perkSubStyle', 'quadraKills', 'timeCCingOthers', 'totalDamageDealt', 'totalDamageDealtToChampions', 'totalDamageTaken', 'totalHeal', 'totalMinionsKilled', 'totalTimeCrowdControlDealt', 'tripleKills', 'turretKills', 'visionScore', 'visionWardsBoughtInGame', 'wardsKilled', 'wardsPlaced', 'win']
@@ -68,7 +77,10 @@ def get_unformatted_tcodes(league, week, team):
 	cursor.execute(query)
 	vals = cursor.fetchall()
 	db.close()
-	return [v for v in vals[0] if v != None]
+	codes = []
+	for row in vals:
+		codes.extend([v for v in row if v != None])
+	return codes
 
 def get_formatted_tcodes(league, week, team=None):
 	rtn_str = "Week " + str(week) + ":\n"
@@ -86,6 +98,7 @@ def get_formatted_tcodes(league, week, team=None):
 	return rtn_str
 
 def get_match_history_links(league, week, team):
+	from tournament import get_matches_for_tcode
 	codes = get_unformatted_tcodes(league, week, team)
 	linkbase = "https://matchhistory.na.leagueoflegends.com/en/#match-details/NA1/"
 	linksuffix = "?tab=overview"
@@ -116,4 +129,5 @@ def main():
 	print(get_formatted_tcodes("Rampage", 5))
 
 if __name__ == '__main__':
-	main()
+	# main()
+	print(fetch_api_key())

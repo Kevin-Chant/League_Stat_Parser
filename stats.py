@@ -78,6 +78,7 @@ def add_match_results_to_player_stats(curr_stats, existing_stats):
 
 def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, desired_value_list, lane_role):
 	aggregate_stats = defaultdict(lambda: 0)
+	aggregate_stats["Lane/Role"] = ",".join([str(piece) for piece in lane_role])
 	for match_id in match_ids:
 		match_obj = riot.get_match_from_id(match_id)
 		if match_obj["gameDuration"] < 600:
@@ -100,6 +101,7 @@ def stats_from_filtered_matches(match_ids, summoner_name, key_hierarchy_list, de
 			if actual_lane != lane_role[0] and actual_role != lane_role[1]:
 				continue
 		match_stats = get_overall_player_stats(match_obj, participant_id = get_partic_id_from_name(match_obj, summoner_name))
+		match_stats["Lane/Role"] = ",".join([str(piece) for piece in lane_role])
 		aggregate_stats = add_match_results_to_player_stats(match_stats, aggregate_stats)
 	return aggregate_stats
 
@@ -143,12 +145,18 @@ def get_num_unclassifiable_games(league=None):
 	print("Out of " + str(len(bool_checklist)) + " games, there were " + str(len(bool_checklist) - sum(bool_checklist)) + " that had misclassified roles")
 	return len(bool_checklist) - sum(bool_checklist)
 
-def get_player_weekly_stats(week, league=None):
+def get_player_stats(week=None, league=None):
 	# get all tcodes
-	if league:
-		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week) + " AND League = \'" + league + "\';")
+	if week:
+		if league:
+			codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week) + " AND League = \'" + league + "\';")
+		else:
+			codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week))
 	else:
-		codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE Week = " + str(week))
+		if league:
+			codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes WHERE League = \'" + league + "\';")
+		else:
+			codes = execute_query("SELECT code1, code2, code3, code4, code5 FROM TournamentCodes")
 	codelist = []
 	for row in codes:
 		codelist.extend([c for c in row if c is not None and c != "None"])
@@ -156,11 +164,11 @@ def get_player_weekly_stats(week, league=None):
 	# get associated matches
 	matches = []
 	for code in codelist:
-		try:
-			m = get_matches_for_tcode(code)
-		except:
-			print(code)
-			exit(0)
+		# try:
+		m = get_matches_for_tcode(code)
+		# except exc:
+			# print(code)
+			# exit(0)
 		if m is not None and len(m) > 0:
 			matches.append(m[0])
 
@@ -170,10 +178,12 @@ def get_player_weekly_stats(week, league=None):
 	for match in matches:
 		for i in range(10):
 			name = match["participantIdentities"][i]["player"]["summonerName"]
+			sid = match["participantIdentities"][i]["player"]["summonerId"]
 			player = match["participants"][i]
-			if name not in stats:
-				stats[name] = stat_dict.copy()
-			dct = stats[name]
+			if str(sid) not in stats:
+				stats[str(sid)] = stat_dict.copy()
+				stats[str(sid)]["Summoner Name"] = name
+			dct = stats[str(sid)]
 			dct["Kills"] += player["stats"]["kills"]
 			dct["Deaths"] += player["stats"]["deaths"]
 			dct["Assists"] += player["stats"]["assists"]
@@ -205,16 +215,21 @@ def get_player_weekly_stats(week, league=None):
 
 
 if __name__ == "__main__":
-	for week in range(1,4):
-		for league in ["Rampage", "Dominate", "Alumnus", "Champions"]:
-			stats = get_player_weekly_stats(week,league)
+	# for week in range(1,9):
+		week=None
+		# for league in ["Rampage", "Dominate", "Alumnus", "Champions"]:
+		for league in ["Dominate"]:
+			stats = get_player_stats(week,league)
 
 			stats_order = ["Kills", "Deaths", "Assists", "kda", "KP", "CS", "CSPM", "Time in game", "Num games", "Wards", "Control wards", "Vision score", "DPM", "Max dpm"]
-			out = open("output_files/week_{!s}_{!s}_stats.csv".format(str(week), league), "w", encoding='utf8')
-			out.write(",".join(["Player"] + stats_order) + "\n")
+			if week:
+				out = open("output_files/week_{!s}_{!s}_stats.csv".format(str(week), league), "w", encoding='utf8')
+			else:
+				out = open("output_files/{!s}_season_stats.csv".format(league), "w", encoding='utf8')
+			out.write(",".join(["SummonerId", "Summoner Name"] + stats_order) + "\n")
 			for player in stats:
 				stat_list = []
 				for stat in stats_order:
 					stat_list.append(str(stats[player][stat]))
-				out.write(",".join([player] + stat_list) + "\n")
+				out.write(",".join([player, stats[player]["Summoner Name"]] + stat_list) + "\n")
 			out.close()

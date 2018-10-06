@@ -13,8 +13,9 @@ def combine_players(x,y):
 	else:
 		raise ValueError("Aggregating stats from two players: " + x["Player"] + ", " + y["Player"])
 
-OVERALL_STATS = ["Player", "Winrate", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "DPM", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
+OVERALL_STATS = ["Player", "Lane/Role", "Winrate", "Number of games", "Time played", "Kills", "Deaths", "Assists", "Kills per Game", "Deaths per Game", "Assists per Game", "KDA", "Kill Participation", "Kill Share", "Death Share", "Team Kills", "Enemy Kills", "Largest MultiKill", "Longest Killing Spree", "Total CS", "CS d@20", "CS per min", "Dmg dealt to champions", "Dmg dealt to champions per game", "DPM", "Dmg dealt", "Dmg dealt per game", "Dmg taken", "Dmg taken per game", "Vision Score", "Vision score diff", "Control wards purchased", "Control Wards per Game", "Wards Placed", "Wards Placed per Game"]
 OVERALL_STAT_AGG_FUNCS = { 	"Player": lambda x,y: combine_players(x,y),
+							"Lane/Role": lambda x,y: x["Lane/Role"],
 							"Winrate": lambda x,y: round(float(x["Winrate"] * x["Number of games"] + y["Winrate"] * y["Number of games"])/(x["Number of games"] + y["Number of games"]), 2),
 							"Number of games": lambda x,y: x["Number of games"] + y["Number of games"],
 							"Time played": lambda x,y: x["Time played"] + y["Time played"],
@@ -127,3 +128,4 @@ STAT_CALCULATION_METHODS = {"Presence": lambda stats: stats["Num Games"] + stats
 
 TEAM_MEMBER_NAMES = ["Däddy Kun", "Shrek Wazowski", "Kadorr", "BigBrainTim", "Rosin", "Feãr", "Áz1r", "sallaD", "Gezang"]
 TEAM_MEMBER_ROLES = [("TOP", None), ("TOP", None), ("JUNGLE", None), ("JUNGLE", None), ("JUNGLE", None), ("MIDDLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]
+ALL_ROLES = [("TOP", None), ("JUNGLE", None), ("MIDDLE", None), ("BOTTOM", "DUO_CARRY"), ("BOTTOM", "DUO_SUPPORT")]
